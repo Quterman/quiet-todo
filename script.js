@@ -135,7 +135,7 @@ function render() {
     const item = document.createElement("li");
     item.className = `task${task.done ? " is-done" : ""}`;
     item.dataset.id = task.id;
-    item.draggable = !task.done;
+    item.draggable = !task.done && currentView !== "done";
 
     const check = document.createElement("button");
     check.className = "task-check";
@@ -248,7 +248,7 @@ function getVisibleTasks() {
     return tasks.filter((task) => task.done);
   }
 
-  return tasks.filter((task) => task.view === currentView && !task.done);
+  return tasks.filter((task) => task.view === currentView);
 }
 
 function addTask(title) {
@@ -310,7 +310,7 @@ function closeDay() {
   history = history.slice(0, 30);
 
   tasks = tasks
-    .filter((task) => task.completedFrom !== "now")
+    .filter((task) => !(task.view === "now" && task.done))
     .map((task) => {
       if (task.view !== "now") {
         return task;
@@ -399,7 +399,7 @@ function moveTask(taskId, nextView, beforeId = null) {
 }
 
 function findAppendIndex(taskList, view) {
-  const lastIndexInView = taskList.findLastIndex((task) => task.view === view && !task.done);
+  const lastIndexInView = taskList.findLastIndex((task) => task.view === view);
   return lastIndexInView === -1 ? taskList.length : lastIndexInView + 1;
 }
 
