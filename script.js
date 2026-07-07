@@ -1,5 +1,6 @@
 const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
+const SHOW_DEMO_HISTORY = true;
 const verificationTaskTitles = new Set([
   "Тест: уйти в выполненное",
   "Тест: перенести в Позже",
@@ -57,6 +58,37 @@ let tasks = loadTasks();
 let history = loadHistory();
 let draggedTaskId = null;
 let pointerDrag = null;
+
+function getDemoHistoryItems(year, month) {
+  if (!SHOW_DEMO_HISTORY) {
+    return [];
+  }
+
+  const demoDays = [
+    { day: 2, completed: 1, total: 4 },
+    { day: 5, completed: 3, total: 5 },
+    { day: 9, completed: 7, total: 8 },
+    { day: 14, completed: 2, total: 6 },
+    { day: 20, completed: 4, total: 5 },
+    { day: 27, completed: 5, total: 5 },
+  ];
+
+  return demoDays.map((item) => {
+    const date = new Date(year, month, item.day);
+
+    return {
+      id: `demo-${getDateKey(date)}`,
+      date: date.toISOString(),
+      dateKey: getDateKey(date),
+      completed: item.completed,
+      total: item.total,
+      moved: item.total - item.completed,
+      percent: Math.round((item.completed / item.total) * 100),
+      archivedTasks: [],
+      demo: true,
+    };
+  });
+}
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -219,8 +251,9 @@ function renderHistory() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekdayOffset = (firstDay.getDay() + 6) % 7;
   const historyByDate = new Map();
+  const displayHistory = [...history, ...getDemoHistoryItems(year, month)];
 
-  for (const item of history) {
+  for (const item of displayHistory) {
     if (!historyByDate.has(item.dateKey)) {
       historyByDate.set(item.dateKey, item);
     }
@@ -255,7 +288,7 @@ function renderHistory() {
     const item = historyByDate.get(dateKey);
     const dayLabel = dayLabelFormatter.format(date);
     const historyItem = document.createElement("li");
-    historyItem.className = `calendar-day${item ? " is-closed" : ""}${
+    historyItem.className = `calendar-day${item ? ` is-closed ${getSuccessClass(item.percent)}` : ""}${
       dateKey === getTodayKey() ? " is-today" : ""
     }`;
     historyItem.setAttribute(
@@ -292,7 +325,7 @@ function renderHistory() {
       historyItem.append(empty);
     }
 
-    if (item && item.dateKey === getTodayKey()) {
+    if (item && !item.demo && item.dateKey === getTodayKey()) {
       const undo = document.createElement("button");
       undo.className = "history-undo";
       undo.type = "button";
@@ -308,6 +341,18 @@ function renderHistory() {
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function getSuccessClass(percent) {
+  if (percent < 50) {
+    return "is-low";
+  }
+
+  if (percent <= 80) {
+    return "is-mid";
+  }
+
+  return "is-high";
 }
 
 function getDateKey(date) {
