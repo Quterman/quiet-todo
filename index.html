@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Тихий список</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-labelledby="app-title">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="kicker">Первый вайб-проект</p>
+            <h1 id="app-title">Тихий список</h1>
+          </div>
+          <aside class="progress-card" aria-label="Прогресс задач">
+            <div class="status" aria-live="polite">
+              <span id="open-count">0</span>
+              <span>сегодня</span>
+            </div>
+            <div class="progress-meter">
+              <div class="progress-copy">
+                <span>Оценка дня</span>
+                <strong id="progress-label">0%</strong>
+              </div>
+              <div
+                class="progress-track"
+                role="progressbar"
+                aria-label="Выполнено задач на сегодня"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <span id="progress-fill"></span>
+              </div>
+              <p id="progress-detail">Сегодняшняя цель пока пустая</p>
+            </div>
+          </aside>
+        </header>
+
+        <form class="composer" id="task-form">
+          <label class="visually-hidden" for="task-input">Новая задача</label>
+          <input
+            id="task-input"
+            name="task"
+            type="text"
+            autocomplete="off"
+            placeholder="Что нужно сделать?"
+            maxlength="90"
+          />
+          <button type="submit" aria-label="Добавить задачу">
+            <span aria-hidden="true">+</span>
+          </button>
+        </form>
+
+        <nav class="tabs" aria-label="Режим списка">
+          <button class="tab is-active" type="button" data-view="now">Сегодня</button>
+          <button class="tab" type="button" data-view="later">Позже</button>
+          <button class="tab" type="button" data-view="soft">Когда будут силы</button>
+          <button class="tab" type="button" data-view="done">Выполнено</button>
+        </nav>
+
+        <section class="list-shell" aria-label="Задачи">
+          <ul class="task-list" id="task-list"></ul>
+          <div class="empty" id="empty-state" hidden>
+            <div class="empty-mark" aria-hidden="true"></div>
+            <h2>Тут пока тихо</h2>
+            <p>Добавь одну маленькую задачу сверху. Даже “налить воды” считается.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
