@@ -284,43 +284,92 @@ h1 {
 
 .history-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.history-item {
-  position: relative;
-  display: grid;
-  gap: 4px;
-  min-height: 58px;
-  padding: 10px 42px 10px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+.calendar-weekday {
+  min-width: 0;
+  padding: 2px 0 4px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.68rem;
+  font-weight: 820;
+  text-align: center;
 }
 
-.history-item strong {
+.calendar-blank {
+  min-height: 64px;
+}
+
+.calendar-day {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 64px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.calendar-day.is-today {
+  border-color: #a7bfaf;
+  box-shadow: inset 0 0 0 1px #a7bfaf;
+}
+
+.calendar-day.is-closed {
+  border-color: #b7d2c2;
+  background: #eef8f2;
+  color: #53615a;
+}
+
+.calendar-date {
   color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.calendar-result {
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.calendar-percent,
+.calendar-empty {
+  line-height: 1;
+}
+
+.calendar-empty {
+  color: rgba(105, 113, 111, 0.42);
+}
+
+.calendar-day.is-closed .calendar-percent {
+  color: var(--mint-strong);
+  font-weight: 820;
 }
 
 .history-undo {
   position: absolute;
   top: 9px;
   right: 9px;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #8b5a50;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   line-height: 1;
 }
 
@@ -505,5 +554,31 @@ h1 {
 
   .day-close {
     width: 100%;
+  }
+
+  .history {
+    padding: 12px;
+  }
+
+  .history-list {
+    gap: 4px;
+  }
+
+  .calendar-blank,
+  .calendar-day {
+    min-height: 56px;
+  }
+
+  .calendar-day {
+    padding: 6px;
+  }
+
+  .calendar-result {
+    font-size: 0.82rem;
+  }
+
+  .history-undo {
+    top: 4px;
+    right: 4px;
   }
 }

@@ -209,22 +209,85 @@ function getTodayStats() {
 }
 
 function renderHistory() {
-  historyCount.textContent = `${history.length} ${getDayWord(history.length)}`;
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(today);
+  const dayLabelFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
+  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const firstDay = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekdayOffset = (firstDay.getDay() + 6) % 7;
+  const historyByDate = new Map();
+
+  for (const item of history) {
+    if (!historyByDate.has(item.dateKey)) {
+      historyByDate.set(item.dateKey, item);
+    }
+  }
+
+  const monthItems = Array.from(historyByDate.values()).filter((item) =>
+    item.dateKey.startsWith(monthKey),
+  );
+
+  historyCount.textContent = `${capitalize(monthName)} · ${monthItems.length} ${getClosedDayWord(
+    monthItems.length,
+  )}`;
   historyList.innerHTML = "";
 
-  for (const item of history.slice(0, 5)) {
+  for (const dayName of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
+    const weekday = document.createElement("li");
+    weekday.className = "calendar-weekday";
+    weekday.textContent = dayName;
+    historyList.append(weekday);
+  }
+
+  for (let index = 0; index < firstWeekdayOffset; index += 1) {
+    const blank = document.createElement("li");
+    blank.className = "calendar-blank";
+    blank.setAttribute("aria-hidden", "true");
+    historyList.append(blank);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month, day);
+    const dateKey = getDateKey(date);
+    const item = historyByDate.get(dateKey);
+    const dayLabel = dayLabelFormatter.format(date);
     const historyItem = document.createElement("li");
-    historyItem.className = "history-item";
+    historyItem.className = `calendar-day${item ? " is-closed" : ""}${
+      dateKey === getTodayKey() ? " is-today" : ""
+    }`;
+    historyItem.setAttribute(
+      "aria-label",
+      item
+        ? `${dayLabel}: закрыто ${item.completed} из ${item.total}, ${item.percent}%`
+        : `${dayLabel}: день не закрыт`,
+    );
 
     const title = document.createElement("span");
-    title.textContent = formatHistoryDate(item.date);
+    title.className = "calendar-date";
+    title.textContent = String(day);
+    historyItem.append(title);
 
-    const result = document.createElement("strong");
-    result.textContent = `${item.completed}/${item.total} · ${item.percent}%`;
+    if (item) {
+      const result = document.createElement("strong");
+      result.className = "calendar-result";
+      result.textContent = `${item.completed}/${item.total}`;
 
-    historyItem.append(title, result);
+      const percent = document.createElement("span");
+      percent.className = "calendar-percent";
+      percent.textContent = `${item.percent}%`;
 
-    if (item.dateKey === getTodayKey()) {
+      historyItem.append(result, percent);
+    } else {
+      const empty = document.createElement("span");
+      empty.className = "calendar-empty";
+      empty.textContent = "—";
+      historyItem.append(empty);
+    }
+
+    if (item && item.dateKey === getTodayKey()) {
       const undo = document.createElement("button");
       undo.className = "history-undo";
       undo.type = "button";
@@ -236,6 +299,10 @@ function renderHistory() {
 
     historyList.append(historyItem);
   }
+}
+
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function getDateKey(date) {
@@ -259,30 +326,23 @@ function isTodayClosed() {
   return Boolean(getTodayHistoryItem());
 }
 
-function getDayWord(count) {
+function getClosedDayWord(count) {
   const lastTwo = count % 100;
   const last = count % 10;
 
   if (lastTwo >= 11 && lastTwo <= 14) {
-    return "дней";
+    return "закрытых дней";
   }
 
   if (last === 1) {
-    return "день";
+    return "закрытый день";
   }
 
   if (last >= 2 && last <= 4) {
-    return "дня";
+    return "закрытых дня";
   }
 
-  return "дней";
-}
-
-function formatHistoryDate(date) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-  }).format(new Date(date));
+  return "закрытых дней";
 }
 
 function getVisibleTasks() {
