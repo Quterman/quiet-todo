@@ -271,6 +271,10 @@ function renderHistory() {
     historyItem.append(title);
 
     if (item) {
+      const progress = document.createElement("span");
+      progress.className = "calendar-progress";
+      progress.style.setProperty("--day-progress", `${item.percent}%`);
+
       const result = document.createElement("strong");
       result.className = "calendar-result";
       result.textContent = `${item.completed}/${item.total}`;
@@ -279,7 +283,8 @@ function renderHistory() {
       percent.className = "calendar-percent";
       percent.textContent = `${item.percent}%`;
 
-      historyItem.append(result, percent);
+      progress.append(result);
+      historyItem.append(progress, percent);
     } else {
       const empty = document.createElement("span");
       empty.className = "calendar-empty";
