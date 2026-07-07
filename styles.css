@@ -48,7 +48,7 @@ button {
   min-height: min(740px, calc(100vh - 56px));
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   padding: 28px;
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.86);
@@ -59,60 +59,26 @@ button {
 
 .topbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
 
-.kicker {
-  margin: 0 0 7px;
-  color: var(--mint-strong);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
 h1 {
   margin: 0;
-  font-size: clamp(2.25rem, 7vw, 4.7rem);
-  line-height: 0.96;
+  font-size: clamp(1.55rem, 4vw, 2.35rem);
+  line-height: 1;
   letter-spacing: 0;
-}
-
-.status {
-  flex: 0 0 auto;
-  min-width: 92px;
-  padding: 12px 13px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  text-align: center;
 }
 
 .progress-card {
-  flex: 0 0 min(48%, 320px);
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.status span:first-child {
-  display: block;
-  font-size: 1.55rem;
-  font-weight: 850;
-}
-
-.status span:last-child {
-  display: block;
-  color: var(--muted);
-  font-size: 0.82rem;
+  flex: 0 0 min(55%, 360px);
+  min-width: 260px;
 }
 
 .progress-meter {
   min-width: 0;
-  padding: 12px 13px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -123,7 +89,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 9px;
+  margin-bottom: 7px;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 760;
@@ -135,7 +101,7 @@ h1 {
 }
 
 .progress-track {
-  height: 16px;
+  height: 12px;
   overflow: hidden;
   border: 1px solid #c9d2cc;
   border-radius: 999px;
@@ -154,28 +120,65 @@ h1 {
 }
 
 .progress-meter p {
-  margin: 8px 0 0;
+  margin: 7px 0 0;
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.25;
 }
 
+.task-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.task-controls.is-composer-open {
+  flex-direction: column;
+}
+
+.task-controls.is-composer-open .tabs {
+  width: 100%;
+}
+
 .composer {
+  flex: 0 0 40px;
   display: grid;
-  grid-template-columns: 1fr 54px;
-  gap: 10px;
-  margin-top: 8px;
+  grid-template-columns: 0 40px 0;
+  gap: 0;
+  overflow: hidden;
+  transition:
+    flex-basis 220ms ease,
+    gap 220ms ease;
+}
+
+.composer.is-expanded {
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 40px 34px;
+  gap: 8px;
+  width: 100%;
 }
 
 .composer input {
   min-width: 0;
-  height: 54px;
-  padding: 0 17px;
+  height: 46px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
   outline: none;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.composer.is-expanded input {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .composer input:focus {
@@ -183,42 +186,71 @@ h1 {
   box-shadow: 0 0 0 4px rgba(118, 183, 149, 0.17);
 }
 
-.composer button {
-  width: 54px;
-  height: 54px;
+.composer-submit,
+.composer-close {
+  width: 40px;
+  height: 46px;
   border: 0;
   border-radius: 8px;
-  background: var(--ink);
-  color: white;
-  font-size: 2rem;
   line-height: 1;
 }
 
+.composer-submit {
+  background: var(--ink);
+  color: white;
+  font-size: 1.48rem;
+}
+
+.composer-close {
+  width: 34px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.62);
+  color: #8b5a50;
+  font-size: 1.1rem;
+}
+
+.composer-close:hover {
+  background: rgba(242, 139, 119, 0.14);
+}
+
 .tabs {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  transition:
+    flex-basis 220ms ease,
+    opacity 160ms ease,
+    padding 220ms ease;
 }
 
 .tab {
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--muted);
-  font-weight: 750;
+  font-size: 0.82rem;
+  font-weight: 760;
+  white-space: normal;
 }
 
 .tab.is-active {
-  border-color: transparent;
-  background: var(--mint);
+  background: var(--panel);
   color: var(--ink);
+  box-shadow: 0 1px 6px rgba(48, 58, 54, 0.08);
 }
 
 .tab.is-drop-target {
-  border-color: var(--mint-strong);
-  box-shadow: 0 0 0 4px rgba(118, 183, 149, 0.17);
+  background: var(--mint);
+  box-shadow: inset 0 0 0 1px var(--mint-strong);
 }
 
 .day-tools {
@@ -602,15 +634,12 @@ h1 {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+    gap: 12px;
   }
 
   .progress-card {
     flex-basis: auto;
-    grid-template-columns: 92px minmax(0, 1fr);
-  }
-
-  .tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
   }
 
   .day-close {

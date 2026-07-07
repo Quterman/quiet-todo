@@ -37,8 +37,11 @@ const views = {
   done: "Выполнено",
 };
 
+const taskControls = document.querySelector(".task-controls");
 const form = document.querySelector("#task-form");
 const input = document.querySelector("#task-input");
+const composerSubmit = document.querySelector(".composer-submit");
+const composerClose = document.querySelector("#composer-close");
 const list = document.querySelector("#task-list");
 const listShell = document.querySelector(".list-shell");
 const emptyState = document.querySelector("#empty-state");
@@ -57,6 +60,7 @@ let tasks = loadTasks();
 let history = loadHistory();
 let draggedTaskId = null;
 let pointerDrag = null;
+let composerExpanded = false;
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -131,7 +135,9 @@ function render() {
   const visibleTasks = getVisibleTasks();
   const todayActiveTasks = tasks.filter((task) => task.view === "now" && !task.done).length;
 
-  openCount.textContent = todayActiveTasks;
+  if (openCount) {
+    openCount.textContent = todayActiveTasks;
+  }
   updateProgress();
   renderHistory();
   list.innerHTML = "";
@@ -343,6 +349,24 @@ function isTodayClosed() {
   return Boolean(getTodayHistoryItem());
 }
 
+function setComposerExpanded(expanded, { focus = false } = {}) {
+  composerExpanded = expanded;
+  form.classList.toggle("is-expanded", expanded);
+  form.classList.toggle("is-collapsed", !expanded);
+  form.setAttribute("aria-expanded", String(expanded));
+  taskControls.classList.toggle("is-composer-open", expanded);
+  composerClose.hidden = !expanded;
+  composerSubmit.setAttribute(
+    "aria-label",
+    expanded ? "Добавить задачу" : "Открыть добавление задачи",
+  );
+  input.tabIndex = expanded ? 0 : -1;
+
+  if (expanded && focus) {
+    input.focus();
+  }
+}
+
 function getClosedDayWord(count) {
   const lastTwo = count % 100;
   const last = count % 10;
@@ -490,7 +514,14 @@ function switchView(view) {
   const inputLocked = view === "done" || (view === "now" && todayClosed);
 
   input.disabled = inputLocked;
-  form.querySelector("button").disabled = inputLocked;
+  composerSubmit.disabled = inputLocked;
+  composerClose.disabled = inputLocked;
+  form.classList.toggle("is-locked", inputLocked);
+
+  if (inputLocked) {
+    setComposerExpanded(false);
+  }
+
   input.placeholder =
     view === "done"
       ? "Выполненные задачи живут отдельно"
@@ -768,6 +799,12 @@ document.addEventListener("pointerup", (event) => {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+
+  if (!composerExpanded) {
+    setComposerExpanded(true, { focus: true });
+    return;
+  }
+
   const title = input.value.trim();
 
   if (!title) {
@@ -780,10 +817,15 @@ form.addEventListener("submit", (event) => {
   input.focus();
 });
 
+composerClose.addEventListener("click", () => {
+  setComposerExpanded(false);
+});
+
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => switchView(tab.dataset.view));
 });
 
 closeDayButton.addEventListener("click", closeDay);
 
+setComposerExpanded(false);
 switchView(currentView);
