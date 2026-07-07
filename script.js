@@ -103,13 +103,19 @@ function normalizeTask(task) {
 }
 
 function normalizeHistoryItem(item) {
+  const date = item.date || new Date().toISOString();
+
   return {
     id: item.id || crypto.randomUUID(),
-    date: item.date || new Date().toISOString(),
+    date,
+    dateKey: item.dateKey || getDateKey(new Date(date)),
     total: Number(item.total) || 0,
     completed: Number(item.completed) || 0,
     moved: Number(item.moved) || 0,
     percent: Number(item.percent) || 0,
+    archivedTasks: Array.isArray(item.archivedTasks)
+      ? item.archivedTasks.map((task) => normalizeTask(task))
+      : [],
   };
 }
 
@@ -164,6 +170,7 @@ function render() {
 function updateProgress() {
   const todayGoalTasks = getTodayGoalTasks();
   const doneTodayTasks = todayGoalTasks.filter((task) => task.done);
+  const todayClosed = isTodayClosed();
   const progress =
     todayGoalTasks.length === 0
       ? 0
@@ -173,10 +180,13 @@ function updateProgress() {
   progressTrack.setAttribute("aria-valuenow", String(progress));
   progressLabel.textContent = `${progress}%`;
   progressDetail.textContent =
-    todayGoalTasks.length === 0
+    todayClosed
+      ? "День закрыт. Отмени закрытие в истории, чтобы продолжить"
+      : todayGoalTasks.length === 0
       ? "Добавь задачу в “Сегодня”, и шкала оживёт"
       : `${doneTodayTasks.length} из ${todayGoalTasks.length} на сегодня завершено`;
-  closeDayButton.disabled = todayGoalTasks.length === 0;
+  closeDayButton.disabled = todayGoalTasks.length === 0 || todayClosed;
+  closeDayButton.textContent = todayClosed ? "День закрыт" : "Закрыть день";
 }
 
 function getTodayGoalTasks() {
@@ -213,8 +223,40 @@ function renderHistory() {
     result.textContent = `${item.completed}/${item.total} · ${item.percent}%`;
 
     historyItem.append(title, result);
+
+    if (item.dateKey === getTodayKey()) {
+      const undo = document.createElement("button");
+      undo.className = "history-undo";
+      undo.type = "button";
+      undo.setAttribute("aria-label", "Отменить закрытие сегодняшнего дня");
+      undo.textContent = "×";
+      undo.addEventListener("click", () => undoCloseDay(item.id));
+      historyItem.append(undo);
+    }
+
     historyList.append(historyItem);
   }
+}
+
+function getDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  return getDateKey(new Date());
+}
+
+function getTodayHistoryItem() {
+  const todayKey = getTodayKey();
+  return history.find((item) => item.dateKey === todayKey);
+}
+
+function isTodayClosed() {
+  return Boolean(getTodayHistoryItem());
 }
 
 function getDayWord(count) {
@@ -252,6 +294,10 @@ function getVisibleTasks() {
 }
 
 function addTask(title) {
+  if (currentView === "now" && isTodayClosed()) {
+    return;
+  }
+
   if (currentView === "done") {
     switchView("now");
   }
@@ -290,10 +336,11 @@ function deleteTask(id) {
 function closeDay() {
   const stats = getTodayStats();
 
-  if (stats.total === 0) {
+  if (stats.total === 0 || isTodayClosed()) {
     return;
   }
 
+  const todayGoalTasks = getTodayGoalTasks().map((task) => ({ ...task, view: "now" }));
   const confirmed = window.confirm(
     `Закрыть день? Итог: ${stats.completed} из ${stats.total}, ${stats.percent}%. Невыполненные задачи уйдут в “Позже”.`
   );
@@ -305,6 +352,8 @@ function closeDay() {
   history.unshift({
     id: crypto.randomUUID(),
     date: new Date().toISOString(),
+    dateKey: getTodayKey(),
+    archivedTasks: todayGoalTasks,
     ...stats,
   });
   history = history.slice(0, 30);
@@ -325,15 +374,52 @@ function closeDay() {
   switchView("now");
 }
 
+function undoCloseDay(historyId) {
+  const item = history.find((entry) => entry.id === historyId);
+
+  if (!item || item.dateKey !== getTodayKey()) {
+    return;
+  }
+
+  const confirmed = window.confirm("Отменить закрытие дня и вернуть задачи в “Сегодня”?");
+
+  if (!confirmed) {
+    return;
+  }
+
+  const archivedIds = new Set(item.archivedTasks.map((task) => task.id));
+  const restoredTasks = item.archivedTasks.map((task) => ({
+    ...task,
+    view: "now",
+    completedFrom: task.done ? "now" : null,
+  }));
+
+  tasks = [...restoredTasks, ...tasks.filter((task) => !archivedIds.has(task.id))];
+  history = history.filter((entry) => entry.id !== historyId);
+
+  currentView = "now";
+  saveTasks();
+  saveHistory();
+  switchView("now");
+}
+
 function switchView(view) {
   currentView = view;
   tabs.forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.view === view);
     tab.setAttribute("aria-current", tab.dataset.view === view ? "page" : "false");
   });
-  input.disabled = view === "done";
-  form.querySelector("button").disabled = view === "done";
-  input.placeholder = view === "done" ? "Выполненные задачи живут отдельно" : `Добавить в “${views[view]}”`;
+  const todayClosed = isTodayClosed();
+  const inputLocked = view === "done" || (view === "now" && todayClosed);
+
+  input.disabled = inputLocked;
+  form.querySelector("button").disabled = inputLocked;
+  input.placeholder =
+    view === "done"
+      ? "Выполненные задачи живут отдельно"
+      : view === "now" && todayClosed
+      ? "Сегодня закрыт. Отмени закрытие в истории"
+      : `Добавить в “${views[view]}”`;
   render();
 }
 
@@ -376,7 +462,7 @@ function startPointerDrag(event, item, task) {
 function moveTask(taskId, nextView, beforeId = null) {
   const movingTask = tasks.find((task) => task.id === taskId);
 
-  if (!movingTask || nextView === "done") {
+  if (!movingTask || nextView === "done" || (nextView === "now" && isTodayClosed())) {
     return;
   }
 
@@ -457,7 +543,9 @@ function getDropPositionFromPoint(x, y) {
 function getTabFromPoint(x, y) {
   const target = document.elementFromPoint(x, y);
   const tab = target?.closest(".tab");
-  return tab && tab.dataset.view !== "done" ? tab : null;
+  return tab && tab.dataset.view !== "done" && !(tab.dataset.view === "now" && isTodayClosed())
+    ? tab
+    : null;
 }
 
 function clearDropHints({ includeDragging = false } = {}) {
@@ -504,7 +592,11 @@ listShell.addEventListener("dragleave", (event) => {
 
 tabs.forEach((tab) => {
   tab.addEventListener("dragover", (event) => {
-    if (!draggedTaskId || tab.dataset.view === "done") {
+    if (
+      !draggedTaskId ||
+      tab.dataset.view === "done" ||
+      (tab.dataset.view === "now" && isTodayClosed())
+    ) {
       return;
     }
 
@@ -514,7 +606,11 @@ tabs.forEach((tab) => {
   });
 
   tab.addEventListener("drop", (event) => {
-    if (!draggedTaskId || tab.dataset.view === "done") {
+    if (
+      !draggedTaskId ||
+      tab.dataset.view === "done" ||
+      (tab.dataset.view === "now" && isTodayClosed())
+    ) {
       return;
     }
 

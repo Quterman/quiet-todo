@@ -292,10 +292,11 @@ h1 {
 }
 
 .history-item {
+  position: relative;
   display: grid;
   gap: 4px;
   min-height: 58px;
-  padding: 10px;
+  padding: 10px 42px 10px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -305,6 +306,26 @@ h1 {
 
 .history-item strong {
   color: var(--ink);
+}
+
+.history-undo {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8b5a50;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.history-undo:hover {
+  background: rgba(242, 139, 119, 0.14);
 }
 
 .list-shell {
