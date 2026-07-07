@@ -221,6 +221,78 @@ h1 {
   box-shadow: 0 0 0 4px rgba(118, 183, 149, 0.17);
 }
 
+.day-tools {
+  display: grid;
+  grid-template-columns: minmax(150px, 180px) 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.day-close {
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 820;
+}
+
+.day-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.history {
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.history h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.history-head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.history-list {
+  display: grid;
+  gap: 6px;
+  max-height: 82px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.history-item strong {
+  color: var(--ink);
+}
+
 .list-shell {
   position: relative;
   flex: 1;
@@ -384,5 +456,9 @@ h1 {
 
   .tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .day-tools {
+    grid-template-columns: 1fr;
   }
 }

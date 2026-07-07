@@ -1,4 +1,5 @@
 const STORAGE_KEY = "quiet-todo.tasks";
+const HISTORY_KEY = "quiet-todo.history";
 const verificationTaskTitles = new Set([
   "Тест: уйти в выполненное",
   "Тест: перенести в Позже",
@@ -46,10 +47,14 @@ const progressFill = document.querySelector("#progress-fill");
 const progressLabel = document.querySelector("#progress-label");
 const progressDetail = document.querySelector("#progress-detail");
 const progressTrack = document.querySelector(".progress-track");
+const closeDayButton = document.querySelector("#close-day");
+const historyCount = document.querySelector("#history-count");
+const historyList = document.querySelector("#history-list");
 const tabs = Array.from(document.querySelectorAll(".tab"));
 
 let currentView = "now";
 let tasks = loadTasks();
+let history = loadHistory();
 let draggedTaskId = null;
 let pointerDrag = null;
 
@@ -72,6 +77,21 @@ function loadTasks() {
   }
 }
 
+function loadHistory() {
+  const saved = localStorage.getItem(HISTORY_KEY);
+
+  if (!saved) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map((item) => normalizeHistoryItem(item)) : [];
+  } catch {
+    return [];
+  }
+}
+
 function normalizeTask(task) {
   return {
     id: task.id || crypto.randomUUID(),
@@ -82,8 +102,23 @@ function normalizeTask(task) {
   };
 }
 
+function normalizeHistoryItem(item) {
+  return {
+    id: item.id || crypto.randomUUID(),
+    date: item.date || new Date().toISOString(),
+    total: Number(item.total) || 0,
+    completed: Number(item.completed) || 0,
+    moved: Number(item.moved) || 0,
+    percent: Number(item.percent) || 0,
+  };
+}
+
 function saveTasks() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function saveHistory() {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
 function render() {
@@ -92,6 +127,7 @@ function render() {
 
   openCount.textContent = todayActiveTasks;
   updateProgress();
+  renderHistory();
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
 
@@ -140,10 +176,71 @@ function updateProgress() {
     todayGoalTasks.length === 0
       ? "Добавь задачу в “Сегодня”, и шкала оживёт"
       : `${doneTodayTasks.length} из ${todayGoalTasks.length} на сегодня завершено`;
+  closeDayButton.disabled = todayGoalTasks.length === 0;
 }
 
 function getTodayGoalTasks() {
   return tasks.filter((task) => task.view === "now" || task.completedFrom === "now");
+}
+
+function getTodayStats() {
+  const todayGoalTasks = getTodayGoalTasks();
+  const doneTodayTasks = todayGoalTasks.filter((task) => task.done);
+
+  return {
+    total: todayGoalTasks.length,
+    completed: doneTodayTasks.length,
+    moved: todayGoalTasks.length - doneTodayTasks.length,
+    percent:
+      todayGoalTasks.length === 0
+        ? 0
+        : Math.round((doneTodayTasks.length / todayGoalTasks.length) * 100),
+  };
+}
+
+function renderHistory() {
+  historyCount.textContent = `${history.length} ${getDayWord(history.length)}`;
+  historyList.innerHTML = "";
+
+  for (const item of history.slice(0, 5)) {
+    const historyItem = document.createElement("li");
+    historyItem.className = "history-item";
+
+    const title = document.createElement("span");
+    title.textContent = formatHistoryDate(item.date);
+
+    const result = document.createElement("strong");
+    result.textContent = `${item.completed}/${item.total} · ${item.percent}%`;
+
+    historyItem.append(title, result);
+    historyList.append(historyItem);
+  }
+}
+
+function getDayWord(count) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+
+  if (lastTwo >= 11 && lastTwo <= 14) {
+    return "дней";
+  }
+
+  if (last === 1) {
+    return "день";
+  }
+
+  if (last >= 2 && last <= 4) {
+    return "дня";
+  }
+
+  return "дней";
+}
+
+function formatHistoryDate(date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(date));
 }
 
 function getVisibleTasks() {
@@ -188,6 +285,44 @@ function deleteTask(id) {
   tasks = tasks.filter((task) => task.id !== id);
   saveTasks();
   render();
+}
+
+function closeDay() {
+  const stats = getTodayStats();
+
+  if (stats.total === 0) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Закрыть день? Итог: ${stats.completed} из ${stats.total}, ${stats.percent}%. Невыполненные задачи уйдут в “Позже”.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  history.unshift({
+    id: crypto.randomUUID(),
+    date: new Date().toISOString(),
+    ...stats,
+  });
+  history = history.slice(0, 30);
+
+  tasks = tasks
+    .filter((task) => task.completedFrom !== "now")
+    .map((task) => {
+      if (task.view !== "now") {
+        return task;
+      }
+
+      return { ...task, view: "later", completedFrom: null };
+    });
+
+  currentView = "now";
+  saveTasks();
+  saveHistory();
+  switchView("now");
 }
 
 function switchView(view) {
@@ -475,5 +610,7 @@ form.addEventListener("submit", (event) => {
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => switchView(tab.dataset.view));
 });
+
+closeDayButton.addEventListener("click", closeDay);
 
 switchView(currentView);
