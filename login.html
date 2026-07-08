@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Вход · Тихий список</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="auth-page" aria-labelledby="auth-page-title">
+      <section class="auth-card">
+        <div class="auth-card-head">
+          <span>Тихий список</span>
+          <h1 id="auth-page-title">Войти в аккаунт</h1>
+          <p>Задачи, история и прогресс будут храниться в Supabase.</p>
+        </div>
+
+        <form class="login-form" id="login-form">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" name="email" type="email" autocomplete="email" required />
+
+          <label for="auth-password">Пароль</label>
+          <input
+            id="auth-password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            minlength="6"
+            required
+          />
+
+          <div class="login-actions">
+            <button type="submit">Войти</button>
+            <button id="auth-signup" type="button">Создать аккаунт</button>
+          </div>
+
+          <button class="login-secondary" id="auth-resend" type="button">
+            Отправить письмо ещё раз
+          </button>
+        </form>
+
+        <p class="login-status" id="auth-status" role="status">
+          Войди или создай аккаунт, чтобы продолжить.
+        </p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="./supabase-client.js"></script>
+    <script src="./auth.js"></script>
+  </body>
+</html>

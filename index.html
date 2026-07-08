@@ -36,26 +36,10 @@
 
         <section class="auth-panel" aria-label="Аккаунт">
           <div class="auth-copy">
-            <strong id="auth-title">Локальный режим</strong>
-            <span id="auth-status">Войди, чтобы хранить задачи в Supabase</span>
+            <strong id="auth-title">Проверяю вход...</strong>
+            <span id="auth-status">Подключаю Supabase</span>
           </div>
-          <form class="auth-form" id="auth-form">
-            <label class="visually-hidden" for="auth-email">Email</label>
-            <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="email" />
-            <label class="visually-hidden" for="auth-password">Пароль</label>
-            <input
-              id="auth-password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="пароль"
-              minlength="6"
-            />
-            <button type="submit">Войти</button>
-            <button id="auth-signup" type="button">Создать</button>
-            <button id="auth-resend" type="button">Письмо</button>
-          </form>
-          <button class="auth-logout" id="auth-logout" type="button" hidden>Выйти</button>
+          <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
         </section>
 
         <div class="task-controls">
@@ -116,6 +100,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="./supabase-client.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>

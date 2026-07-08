@@ -1,9 +1,7 @@
 const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
-const SUPABASE_URL = "https://krpibyzyrxvppkxetsul.supabase.co";
-const SUPABASE_KEY = "sb_publishable_e94wFEishOZxkBVOd5BAow_F8ffHEBs";
-const AUTH_REDIRECT_URL = "https://quterman.github.io/quiet-todo/";
-const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.quietTodoSupabase;
+const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
 const verificationTaskTitles = new Set([
   "Тест: уйти в выполненное",
   "Тест: перенести в Позже",
@@ -59,11 +57,6 @@ const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
 const weekSummary = document.querySelector("#week-summary");
 const authPanel = document.querySelector(".auth-panel");
-const authForm = document.querySelector("#auth-form");
-const authEmail = document.querySelector("#auth-email");
-const authPassword = document.querySelector("#auth-password");
-const authSignup = document.querySelector("#auth-signup");
-const authResend = document.querySelector("#auth-resend");
 const authLogout = document.querySelector("#auth-logout");
 const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
@@ -287,89 +280,10 @@ function setAuthStatus(text) {
 
 function updateAuthUi() {
   authPanel.classList.toggle("is-signed-in", Boolean(currentUser));
-  authForm.hidden = Boolean(currentUser);
-  authLogout.hidden = !currentUser;
-  authTitle.textContent = currentUser ? currentUser.email : "Локальный режим";
+  authTitle.textContent = currentUser ? currentUser.email : "Нужен вход";
   authStatus.textContent = currentUser
     ? "Задачи сохраняются в Supabase"
-    : "Войди, чтобы хранить задачи в Supabase";
-}
-
-async function signIn() {
-  const email = authEmail.value.trim();
-  const password = authPassword.value;
-
-  if (!email || !password || !supabaseClient) {
-    return;
-  }
-
-  setAuthStatus("Вхожу...");
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    setAuthStatus(`Не получилось войти: ${error.message}`);
-    return;
-  }
-
-  currentUser = data.user;
-  updateAuthUi();
-  await loadCloudData();
-}
-
-async function signUp() {
-  const email = authEmail.value.trim();
-  const password = authPassword.value;
-
-  if (!email || !password || !supabaseClient) {
-    return;
-  }
-
-  setAuthStatus("Создаю аккаунт...");
-  const { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: AUTH_REDIRECT_URL,
-    },
-  });
-
-  if (error) {
-    setAuthStatus(`Не получилось создать аккаунт: ${error.message}`);
-    return;
-  }
-
-  if (data.session) {
-    currentUser = data.user;
-    updateAuthUi();
-    await loadCloudData();
-    return;
-  }
-
-  setAuthStatus("Проверь почту и подтверди регистрацию");
-}
-
-async function resendConfirmation() {
-  const email = authEmail.value.trim();
-
-  if (!email || !supabaseClient) {
-    return;
-  }
-
-  setAuthStatus("Отправляю письмо подтверждения...");
-  const { error } = await supabaseClient.auth.resend({
-    type: "signup",
-    email,
-    options: {
-      emailRedirectTo: AUTH_REDIRECT_URL,
-    },
-  });
-
-  if (error) {
-    setAuthStatus(`Не получилось отправить письмо: ${error.message}`);
-    return;
-  }
-
-  setAuthStatus("Письмо отправлено. Проверь свежую ссылку");
+    : "Открываю страницу входа";
 }
 
 async function signOut() {
@@ -379,15 +293,14 @@ async function signOut() {
 
   await supabaseClient.auth.signOut();
   currentUser = null;
-  tasks = loadTasks();
-  history = loadHistory();
   updateAuthUi();
-  switchView("now");
+  window.location.href = loginUrl;
 }
 
 async function initializeAuth() {
   if (!supabaseClient) {
     setAuthStatus("Supabase не загрузился, работаем локально");
+    switchView(currentView);
     return;
   }
 
@@ -395,14 +308,22 @@ async function initializeAuth() {
   currentUser = data.session?.user ?? null;
   updateAuthUi();
 
-  if (currentUser) {
-    await loadCloudData();
+  if (!currentUser) {
+    window.location.href = loginUrl;
+    return;
   }
+
+  await loadCloudData();
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     const previousUserId = currentUser?.id;
     currentUser = session?.user ?? null;
     updateAuthUi();
+
+    if (!currentUser) {
+      window.location.href = loginUrl;
+      return;
+    }
 
     if (currentUser && currentUser.id !== previousUserId) {
       loadCloudData();
@@ -1179,23 +1100,9 @@ tabs.forEach((tab) => {
 
 closeDayButton.addEventListener("click", closeDay);
 
-authForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  signIn();
-});
-
-authSignup.addEventListener("click", () => {
-  signUp();
-});
-
-authResend.addEventListener("click", () => {
-  resendConfirmation();
-});
-
 authLogout.addEventListener("click", () => {
   signOut();
 });
 
 setComposerExpanded(false);
-switchView(currentView);
 initializeAuth();
