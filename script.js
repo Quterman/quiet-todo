@@ -2,6 +2,7 @@ const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
 const SUPABASE_URL = "https://krpibyzyrxvppkxetsul.supabase.co";
 const SUPABASE_KEY = "sb_publishable_e94wFEishOZxkBVOd5BAow_F8ffHEBs";
+const AUTH_REDIRECT_URL = "https://quterman.github.io/quiet-todo/";
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 const verificationTaskTitles = new Set([
   "Тест: уйти в выполненное",
@@ -323,7 +324,13 @@ async function signUp() {
   }
 
   setAuthStatus("Создаю аккаунт...");
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL,
+    },
+  });
 
   if (error) {
     setAuthStatus(`Не получилось создать аккаунт: ${error.message}`);
