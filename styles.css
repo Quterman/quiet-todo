@@ -59,13 +59,14 @@ button {
 
 .topbar {
   display: grid;
-  grid-template-columns: 84px minmax(250px, 1fr) minmax(140px, 178px);
-  align-items: center;
+  grid-template-columns: 84px minmax(250px, 1fr) minmax(150px, 190px);
+  align-items: stretch;
   gap: 12px;
 }
 
 .brand-mark {
   min-width: 0;
+  display: grid;
 }
 
 .brand-mark h1,
@@ -78,7 +79,7 @@ h1 {
   display: grid;
   place-items: center;
   width: 72px;
-  min-height: 56px;
+  min-height: 100%;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -147,12 +148,11 @@ h1 {
 
 .auth-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 7px;
   min-width: 0;
-  min-height: 36px;
-  padding: 5px 6px 5px 9px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
@@ -163,11 +163,12 @@ h1 {
 }
 
 .auth-copy strong {
+  display: block;
   overflow: hidden;
   color: var(--ink);
-  font-size: clamp(0.64rem, 1.2vw, 0.74rem);
+  font-size: 0.78rem;
   font-weight: 820;
-  line-height: 1;
+  line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -202,13 +203,14 @@ h1 {
 
 .auth-form button,
 .auth-logout {
-  min-height: 26px;
-  padding: 0 9px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 820;
 }
 
@@ -904,7 +906,6 @@ h1 {
 
   .brand-mark h1 {
     width: 64px;
-    min-height: 52px;
     font-size: 0.74rem;
   }
 
@@ -914,7 +915,6 @@ h1 {
 
   .auth-panel {
     grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .auth-form {
@@ -923,7 +923,7 @@ h1 {
   }
 
   .auth-logout {
-    width: auto;
+    width: 100%;
   }
 
   .day-close {
