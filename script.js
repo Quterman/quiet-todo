@@ -63,6 +63,7 @@ const authForm = document.querySelector("#auth-form");
 const authEmail = document.querySelector("#auth-email");
 const authPassword = document.querySelector("#auth-password");
 const authSignup = document.querySelector("#auth-signup");
+const authResend = document.querySelector("#auth-resend");
 const authLogout = document.querySelector("#auth-logout");
 const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
@@ -345,6 +346,30 @@ async function signUp() {
   }
 
   setAuthStatus("Проверь почту и подтверди регистрацию");
+}
+
+async function resendConfirmation() {
+  const email = authEmail.value.trim();
+
+  if (!email || !supabaseClient) {
+    return;
+  }
+
+  setAuthStatus("Отправляю письмо подтверждения...");
+  const { error } = await supabaseClient.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: AUTH_REDIRECT_URL,
+    },
+  });
+
+  if (error) {
+    setAuthStatus(`Не получилось отправить письмо: ${error.message}`);
+    return;
+  }
+
+  setAuthStatus("Письмо отправлено. Проверь свежую ссылку");
 }
 
 async function signOut() {
@@ -1161,6 +1186,10 @@ authForm.addEventListener("submit", (event) => {
 
 authSignup.addEventListener("click", () => {
   signUp();
+});
+
+authResend.addEventListener("click", () => {
+  resendConfirmation();
 });
 
 authLogout.addEventListener("click", () => {

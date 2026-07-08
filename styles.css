@@ -160,9 +160,9 @@ h1 {
 
 .auth-form {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(100px, 0.8fr) auto auto;
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 0.8fr) auto auto auto;
   gap: 6px;
-  min-width: min(100%, 440px);
+  min-width: min(100%, 520px);
 }
 
 .auth-form[hidden],
