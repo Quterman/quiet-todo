@@ -1,5 +1,8 @@
 const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
+const SUPABASE_URL = "https://krpibyzyrxvppkxetsul.supabase.co";
+const SUPABASE_KEY = "sb_publishable_e94wFEishOZxkBVOd5BAow_F8ffHEBs";
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 const verificationTaskTitles = new Set([
   "Тест: уйти в выполненное",
   "Тест: перенести в Позже",
@@ -53,6 +56,15 @@ const progressTrack = document.querySelector(".progress-track");
 const closeDayButton = document.querySelector("#close-day");
 const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
+const weekSummary = document.querySelector("#week-summary");
+const authPanel = document.querySelector(".auth-panel");
+const authForm = document.querySelector("#auth-form");
+const authEmail = document.querySelector("#auth-email");
+const authPassword = document.querySelector("#auth-password");
+const authSignup = document.querySelector("#auth-signup");
+const authLogout = document.querySelector("#auth-logout");
+const authTitle = document.querySelector("#auth-title");
+const authStatus = document.querySelector("#auth-status");
 const tabs = Array.from(document.querySelectorAll(".tab"));
 
 let currentView = "now";
@@ -61,6 +73,9 @@ let history = loadHistory();
 let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = false;
+let currentUser = null;
+let cloudSaveTimer = null;
+let isLoadingCloudData = false;
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -124,11 +139,243 @@ function normalizeHistoryItem(item) {
 }
 
 function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  if (!currentUser) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+  scheduleCloudSave();
 }
 
 function saveHistory() {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  if (!currentUser) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }
+  scheduleCloudSave();
+}
+
+function scheduleCloudSave() {
+  if (!currentUser || isLoadingCloudData) {
+    return;
+  }
+
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    saveCloudData();
+  }, 250);
+}
+
+async function saveCloudData() {
+  if (!currentUser || !supabaseClient) {
+    return;
+  }
+
+  setAuthStatus("Сохраняю в облако...");
+
+  const userId = currentUser.id;
+  const taskRows = tasks.map((task, index) => ({
+    id: task.id,
+    user_id: userId,
+    title: task.title,
+    view: task.view,
+    done: task.done,
+    completed_from: task.completedFrom,
+    sort_order: index,
+  }));
+  const historyRows = history.map((item) => ({
+    id: item.id,
+    user_id: userId,
+    date_key: item.dateKey,
+    total: item.total,
+    completed: item.completed,
+    moved: item.moved,
+    percent: item.percent,
+    archived_tasks: item.archivedTasks,
+    created_at: item.date,
+  }));
+
+  const tasksDelete = await supabaseClient.from("tasks").delete().eq("user_id", userId);
+  if (tasksDelete.error) {
+    setAuthStatus(`Ошибка сохранения задач: ${tasksDelete.error.message}`);
+    return;
+  }
+
+  if (taskRows.length > 0) {
+    const tasksInsert = await supabaseClient.from("tasks").insert(taskRows);
+    if (tasksInsert.error) {
+      setAuthStatus(`Ошибка сохранения задач: ${tasksInsert.error.message}`);
+      return;
+    }
+  }
+
+  const historyDelete = await supabaseClient.from("day_history").delete().eq("user_id", userId);
+  if (historyDelete.error) {
+    setAuthStatus(`Ошибка сохранения истории: ${historyDelete.error.message}`);
+    return;
+  }
+
+  if (historyRows.length > 0) {
+    const historyInsert = await supabaseClient.from("day_history").insert(historyRows);
+    if (historyInsert.error) {
+      setAuthStatus(`Ошибка сохранения истории: ${historyInsert.error.message}`);
+      return;
+    }
+  }
+
+  setAuthStatus("Синхронизировано");
+}
+
+async function loadCloudData() {
+  if (!currentUser || !supabaseClient) {
+    return;
+  }
+
+  isLoadingCloudData = true;
+  setAuthStatus("Загружаю задачи из Supabase...");
+
+  const taskResult = await supabaseClient
+    .from("tasks")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  const historyResult = await supabaseClient
+    .from("day_history")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (taskResult.error) {
+    setAuthStatus(`Ошибка загрузки задач: ${taskResult.error.message}`);
+    isLoadingCloudData = false;
+    return;
+  }
+
+  if (historyResult.error) {
+    setAuthStatus(`Ошибка загрузки истории: ${historyResult.error.message}`);
+    isLoadingCloudData = false;
+    return;
+  }
+
+  tasks = taskResult.data.map((row) =>
+    normalizeTask({
+      id: row.id,
+      title: row.title,
+      view: row.view,
+      done: row.done,
+      completedFrom: row.completed_from,
+    }),
+  );
+  history = historyResult.data.map((row) =>
+    normalizeHistoryItem({
+      id: row.id,
+      date: row.created_at,
+      dateKey: row.date_key,
+      total: row.total,
+      completed: row.completed,
+      moved: row.moved,
+      percent: row.percent,
+      archivedTasks: row.archived_tasks,
+    }),
+  );
+
+  isLoadingCloudData = false;
+  setAuthStatus("Данные загружены из Supabase");
+  switchView(currentView);
+}
+
+function setAuthStatus(text) {
+  authStatus.textContent = text;
+}
+
+function updateAuthUi() {
+  authPanel.classList.toggle("is-signed-in", Boolean(currentUser));
+  authForm.hidden = Boolean(currentUser);
+  authLogout.hidden = !currentUser;
+  authTitle.textContent = currentUser ? currentUser.email : "Локальный режим";
+  authStatus.textContent = currentUser
+    ? "Задачи сохраняются в Supabase"
+    : "Войди, чтобы хранить задачи в Supabase";
+}
+
+async function signIn() {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+
+  if (!email || !password || !supabaseClient) {
+    return;
+  }
+
+  setAuthStatus("Вхожу...");
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    setAuthStatus(`Не получилось войти: ${error.message}`);
+    return;
+  }
+
+  currentUser = data.user;
+  updateAuthUi();
+  await loadCloudData();
+}
+
+async function signUp() {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+
+  if (!email || !password || !supabaseClient) {
+    return;
+  }
+
+  setAuthStatus("Создаю аккаунт...");
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+  if (error) {
+    setAuthStatus(`Не получилось создать аккаунт: ${error.message}`);
+    return;
+  }
+
+  if (data.session) {
+    currentUser = data.user;
+    updateAuthUi();
+    await loadCloudData();
+    return;
+  }
+
+  setAuthStatus("Проверь почту и подтверди регистрацию");
+}
+
+async function signOut() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  tasks = loadTasks();
+  history = loadHistory();
+  updateAuthUi();
+  switchView("now");
+}
+
+async function initializeAuth() {
+  if (!supabaseClient) {
+    setAuthStatus("Supabase не загрузился, работаем локально");
+    return;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data.session?.user ?? null;
+  updateAuthUi();
+
+  if (currentUser) {
+    await loadCloudData();
+  }
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const previousUserId = currentUser?.id;
+    currentUser = session?.user ?? null;
+    updateAuthUi();
+
+    if (currentUser && currentUser.id !== previousUserId) {
+      loadCloudData();
+    }
+  });
 }
 
 function render() {
@@ -310,10 +557,83 @@ function renderHistory() {
 
     historyList.append(historyItem);
   }
+
+  renderWeekSummary(today);
 }
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function renderWeekSummary(date) {
+  const stats = getWeekStats(date);
+  weekSummary.innerHTML = "";
+
+  const title = document.createElement("span");
+  title.className = "week-summary-title";
+  title.textContent = "Итог недели";
+  weekSummary.append(title);
+
+  if (stats.daysClosed === 0) {
+    const empty = document.createElement("p");
+    empty.className = "week-summary-empty";
+    empty.textContent = "Закрой день, и тут появится ритм недели";
+    weekSummary.append(empty);
+    return;
+  }
+
+  const list = document.createElement("dl");
+  list.className = "week-summary-list";
+
+  for (const item of [
+    { label: "Дней", value: stats.daysClosed },
+    { label: "Задач", value: `${stats.completed}/${stats.total}` },
+    { label: "Выполнение", value: `${stats.percent}%` },
+  ]) {
+    const group = document.createElement("div");
+    const term = document.createElement("dt");
+    const value = document.createElement("dd");
+
+    term.textContent = item.label;
+    value.textContent = item.value;
+    group.append(term, value);
+    list.append(group);
+  }
+
+  weekSummary.append(list);
+}
+
+function getWeekStats(date) {
+  const start = getWeekStart(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  const weekItems = history.filter((item) => {
+    const itemDate = parseDateKey(item.dateKey);
+    return itemDate >= start && itemDate <= end;
+  });
+  const completed = weekItems.reduce((sum, item) => sum + item.completed, 0);
+  const total = weekItems.reduce((sum, item) => sum + item.total, 0);
+
+  return {
+    daysClosed: weekItems.length,
+    completed,
+    total,
+    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+}
+
+function getWeekStart(date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const offset = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - offset);
+
+  return start;
+}
+
+function parseDateKey(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function getSuccessClass(percent) {
@@ -827,5 +1147,19 @@ tabs.forEach((tab) => {
 
 closeDayButton.addEventListener("click", closeDay);
 
+authForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  signIn();
+});
+
+authSignup.addEventListener("click", () => {
+  signUp();
+});
+
+authLogout.addEventListener("click", () => {
+  signOut();
+});
+
 setComposerExpanded(false);
 switchView(currentView);
+initializeAuth();

@@ -34,6 +34,29 @@
           </aside>
         </header>
 
+        <section class="auth-panel" aria-label="Аккаунт">
+          <div class="auth-copy">
+            <strong id="auth-title">Локальный режим</strong>
+            <span id="auth-status">Войди, чтобы хранить задачи в Supabase</span>
+          </div>
+          <form class="auth-form" id="auth-form">
+            <label class="visually-hidden" for="auth-email">Email</label>
+            <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="email" />
+            <label class="visually-hidden" for="auth-password">Пароль</label>
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="пароль"
+              minlength="6"
+            />
+            <button type="submit">Войти</button>
+            <button id="auth-signup" type="button">Создать</button>
+          </form>
+          <button class="auth-logout" id="auth-logout" type="button" hidden>Выйти</button>
+        </section>
+
         <div class="task-controls">
           <form class="composer is-collapsed" id="task-form" aria-expanded="false">
             <label class="visually-hidden" for="task-input">Новая задача</label>
@@ -86,10 +109,12 @@
             <span id="history-count">0 дней</span>
           </div>
           <ol class="history-list" id="history-list"></ol>
+          <div class="week-summary" id="week-summary" aria-live="polite"></div>
         </section>
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>
