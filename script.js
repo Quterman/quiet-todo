@@ -282,7 +282,7 @@ function updateAuthUi() {
   authPanel.classList.toggle("is-signed-in", Boolean(currentUser));
   authTitle.textContent = currentUser ? currentUser.email : "Нужен вход";
   authStatus.textContent = currentUser
-    ? "Задачи сохраняются в Supabase"
+    ? "Supabase"
     : "Открываю страницу входа";
 }
 

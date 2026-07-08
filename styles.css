@@ -58,22 +58,41 @@ button {
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 84px minmax(250px, 1fr) minmax(150px, 190px);
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  gap: 12px;
 }
 
+.brand-mark {
+  min-width: 0;
+}
+
+.brand-mark h1,
 h1 {
   margin: 0;
-  font-size: clamp(1.55rem, 4vw, 2.35rem);
-  line-height: 1;
   letter-spacing: 0;
 }
 
+.brand-mark h1 {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  min-height: 56px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 880;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-align: center;
+}
+
 .progress-card {
-  flex: 0 0 min(55%, 360px);
-  min-width: 260px;
+  min-width: 0;
 }
 
 .progress-meter {
@@ -128,9 +147,10 @@ h1 {
 
 .auth-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 7px;
+  min-width: 0;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -146,7 +166,7 @@ h1 {
 .auth-copy strong {
   overflow: hidden;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.76rem;
   font-weight: 820;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -154,7 +174,7 @@ h1 {
 
 .auth-copy span {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   line-height: 1.25;
 }
 
@@ -188,13 +208,13 @@ h1 {
 
 .auth-form button,
 .auth-logout {
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 820;
 }
 
@@ -884,18 +904,23 @@ h1 {
   }
 
   .topbar {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 64px 1fr;
     gap: 12px;
   }
 
+  .brand-mark h1 {
+    width: 64px;
+    min-height: 52px;
+    font-size: 0.74rem;
+  }
+
   .progress-card {
-    flex-basis: auto;
     min-width: 0;
   }
 
   .auth-panel {
-    grid-template-columns: 1fr;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .auth-form {
@@ -904,7 +929,7 @@ h1 {
   }
 
   .auth-logout {
-    width: 100%;
+    width: auto;
   }
 
   .day-close {

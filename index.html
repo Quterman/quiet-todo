@@ -10,7 +10,7 @@
     <main class="app" aria-labelledby="app-title">
       <section class="workspace">
         <header class="topbar">
-          <div>
+          <div class="brand-mark">
             <h1 id="app-title">Тихий список</h1>
           </div>
           <aside class="progress-card" aria-label="Прогресс задач">
@@ -32,15 +32,14 @@
               <p id="progress-detail">Сегодняшняя цель пока пустая</p>
             </div>
           </aside>
+          <section class="auth-panel" aria-label="Аккаунт">
+            <div class="auth-copy">
+              <strong id="auth-title">Проверяю вход...</strong>
+              <span id="auth-status">Подключаю Supabase</span>
+            </div>
+            <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
+          </section>
         </header>
-
-        <section class="auth-panel" aria-label="Аккаунт">
-          <div class="auth-copy">
-            <strong id="auth-title">Проверяю вход...</strong>
-            <span id="auth-status">Подключаю Supabase</span>
-          </div>
-          <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
-        </section>
 
         <div class="task-controls">
           <form class="composer is-collapsed" id="task-form" aria-expanded="false">
