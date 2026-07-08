@@ -59,7 +59,7 @@ button {
 
 .topbar {
   display: grid;
-  grid-template-columns: 84px minmax(250px, 1fr) minmax(150px, 190px);
+  grid-template-columns: 84px minmax(250px, 1fr) minmax(140px, 178px);
   align-items: center;
   gap: 12px;
 }
@@ -147,11 +147,12 @@ h1 {
 
 .auth-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px;
+  min-height: 36px;
+  padding: 5px 6px 5px 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
@@ -159,23 +160,16 @@ h1 {
 
 .auth-copy {
   min-width: 0;
-  display: grid;
-  gap: 3px;
 }
 
 .auth-copy strong {
   overflow: hidden;
   color: var(--ink);
-  font-size: 0.76rem;
+  font-size: clamp(0.64rem, 1.2vw, 0.74rem);
   font-weight: 820;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.auth-copy span {
-  color: var(--muted);
-  font-size: 0.7rem;
-  line-height: 1.25;
 }
 
 .auth-form {
@@ -208,13 +202,13 @@ h1 {
 
 .auth-form button,
 .auth-logout {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 26px;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   font-weight: 820;
 }
 

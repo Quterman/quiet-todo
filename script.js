@@ -275,15 +275,15 @@ async function loadCloudData() {
 }
 
 function setAuthStatus(text) {
-  authStatus.textContent = text;
+  if (authStatus) {
+    authStatus.textContent = text;
+  }
 }
 
 function updateAuthUi() {
   authPanel.classList.toggle("is-signed-in", Boolean(currentUser));
   authTitle.textContent = currentUser ? currentUser.email : "Нужен вход";
-  authStatus.textContent = currentUser
-    ? "Supabase"
-    : "Открываю страницу входа";
+  setAuthStatus(currentUser ? "Supabase" : "Открываю страницу входа");
 }
 
 async function signOut() {
