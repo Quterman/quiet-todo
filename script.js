@@ -15,6 +15,7 @@ const initialTasks = [
     view: "now",
     done: false,
     completedFrom: null,
+    priority: "medium",
   },
   {
     id: crypto.randomUUID(),
@@ -22,6 +23,7 @@ const initialTasks = [
     view: "later",
     done: false,
     completedFrom: null,
+    priority: "medium",
   },
   {
     id: crypto.randomUUID(),
@@ -29,6 +31,7 @@ const initialTasks = [
     view: "soft",
     done: false,
     completedFrom: null,
+    priority: "medium",
   },
 ];
 
@@ -39,9 +42,16 @@ const views = {
   done: "Выполнено",
 };
 
+const priorities = {
+  low: "Низкий",
+  medium: "Средний",
+  high: "Высокий",
+};
+
 const taskControls = document.querySelector(".task-controls");
 const form = document.querySelector("#task-form");
 const input = document.querySelector("#task-input");
+const prioritySelect = document.querySelector("#task-priority");
 const composerSubmit = document.querySelector(".composer-submit");
 const composerClose = document.querySelector("#composer-close");
 const list = document.querySelector("#task-list");
@@ -61,8 +71,12 @@ const authLogout = document.querySelector("#auth-logout");
 const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
 const tabs = Array.from(document.querySelectorAll(".tab"));
+const priorityFilterButtons = Array.from(
+  document.querySelectorAll(".priority-filter-button"),
+);
 
 let currentView = "now";
+let currentPriority = "all";
 let tasks = loadTasks();
 let history = loadHistory();
 let draggedTaskId = null;
@@ -113,6 +127,7 @@ function normalizeTask(task) {
     view: views[task.view] ? task.view : "now",
     done: Boolean(task.done),
     completedFrom: task.completedFrom || (task.done ? task.view : null),
+    priority: priorities[task.priority] ? task.priority : "medium",
   };
 }
 
@@ -173,6 +188,7 @@ async function saveCloudData() {
     view: task.view,
     done: task.done,
     completed_from: task.completedFrom,
+    priority: task.priority,
     sort_order: index,
   }));
   const historyRows = history.map((item) => ({
@@ -254,6 +270,7 @@ async function loadCloudData() {
       view: row.view,
       done: row.done,
       completedFrom: row.completed_from,
+      priority: row.priority,
     }),
   );
   history = historyResult.data.map((row) =>
@@ -360,6 +377,15 @@ function render() {
     title.className = "task-title";
     title.textContent = task.title;
 
+    const priority = document.createElement("span");
+    priority.className = `task-priority is-${task.priority}`;
+    priority.textContent = priorities[task.priority];
+    priority.setAttribute("aria-label", `Приоритет: ${priorities[task.priority]}`);
+
+    const taskCopy = document.createElement("div");
+    taskCopy.className = "task-copy";
+    taskCopy.append(title, priority);
+
     const remove = document.createElement("button");
     remove.className = "task-delete";
     remove.type = "button";
@@ -367,7 +393,7 @@ function render() {
     remove.textContent = "×";
     remove.addEventListener("click", () => deleteTask(task.id));
 
-    item.append(check, title, remove);
+    item.append(check, taskCopy, remove);
     wireDragEvents(item, task);
     list.append(item);
   }
@@ -634,6 +660,7 @@ function setComposerExpanded(expanded, { focus = false } = {}) {
     expanded ? "Добавить задачу" : "Открыть добавление задачи",
   );
   input.tabIndex = expanded ? 0 : -1;
+  prioritySelect.tabIndex = expanded ? 0 : -1;
 
   if (expanded && focus) {
     input.focus();
@@ -660,14 +687,17 @@ function getClosedDayWord(count) {
 }
 
 function getVisibleTasks() {
-  if (currentView === "done") {
-    return tasks.filter((task) => task.done);
-  }
+  const tasksInView =
+    currentView === "done"
+      ? tasks.filter((task) => task.done)
+      : tasks.filter((task) => task.view === currentView);
 
-  return tasks.filter((task) => task.view === currentView);
+  return currentPriority === "all"
+    ? tasksInView
+    : tasksInView.filter((task) => task.priority === currentPriority);
 }
 
-function addTask(title) {
+function addTask(title, priority) {
   if (currentView === "now" && isTodayClosed()) {
     return;
   }
@@ -682,6 +712,7 @@ function addTask(title) {
     view: currentView === "done" ? "now" : currentView,
     done: false,
     completedFrom: null,
+    priority: priorities[priority] ? priority : "medium",
   });
   saveTasks();
   render();
@@ -787,6 +818,7 @@ function switchView(view) {
   const inputLocked = view === "done" || (view === "now" && todayClosed);
 
   input.disabled = inputLocked;
+  prioritySelect.disabled = inputLocked;
   composerSubmit.disabled = inputLocked;
   composerClose.disabled = inputLocked;
   form.classList.toggle("is-locked", inputLocked);
@@ -801,6 +833,16 @@ function switchView(view) {
       : view === "now" && todayClosed
       ? "Сегодня закрыт. Отмени закрытие в истории"
       : `Добавить в “${views[view]}”`;
+  render();
+}
+
+function switchPriorityFilter(priority) {
+  currentPriority = priority === "all" || priorities[priority] ? priority : "all";
+  priorityFilterButtons.forEach((button) => {
+    const active = button.dataset.priority === currentPriority;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   render();
 }
 
@@ -1085,8 +1127,9 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  addTask(title);
+  addTask(title, prioritySelect.value);
   input.value = "";
+  prioritySelect.value = "medium";
   input.focus();
 });
 
@@ -1098,6 +1141,10 @@ tabs.forEach((tab) => {
   tab.addEventListener("click", () => switchView(tab.dataset.view));
 });
 
+priorityFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => switchPriorityFilter(button.dataset.priority));
+});
+
 closeDayButton.addEventListener("click", closeDay);
 
 authLogout.addEventListener("click", () => {
@@ -1105,4 +1152,5 @@ authLogout.addEventListener("click", () => {
 });
 
 setComposerExpanded(false);
+switchPriorityFilter("all");
 initializeAuth();

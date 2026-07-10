@@ -51,6 +51,12 @@
               placeholder="Что нужно сделать?"
               maxlength="90"
             />
+            <label class="visually-hidden" for="task-priority">Приоритет задачи</label>
+            <select id="task-priority" name="priority" aria-label="Приоритет задачи">
+              <option value="low">Низкий</option>
+              <option value="medium" selected>Средний</option>
+              <option value="high">Высокий</option>
+            </select>
             <button class="composer-submit" type="submit" aria-label="Открыть добавление задачи">
               <span aria-hidden="true">+</span>
             </button>
@@ -71,6 +77,24 @@
             <button class="tab" type="button" data-view="soft">Когда будут силы</button>
             <button class="tab" type="button" data-view="done">Выполнено</button>
           </nav>
+        </div>
+
+        <div class="priority-filter" aria-label="Фильтр по приоритету">
+          <span>Приоритет</span>
+          <div class="priority-filter-options">
+            <button class="priority-filter-button is-active" type="button" data-priority="all">
+              Все
+            </button>
+            <button class="priority-filter-button" type="button" data-priority="high">
+              Высокий
+            </button>
+            <button class="priority-filter-button" type="button" data-priority="medium">
+              Средний
+            </button>
+            <button class="priority-filter-button" type="button" data-priority="low">
+              Низкий
+            </button>
+          </div>
         </div>
 
         <section class="list-shell" aria-label="Задачи">
