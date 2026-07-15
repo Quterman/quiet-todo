@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Тихий список</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=auth-polish-3" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -40,120 +46,120 @@
           </section>
         </header>
 
-        <section class="day-switcher" aria-label="Рабочий день">
-          <div class="day-switcher-copy">
-            <span>Рабочий день</span>
-            <strong id="active-day-title">Сегодня</strong>
-            <p id="active-day-status">Проверяю состояние дня</p>
+        <nav class="section-tabs" aria-label="Разделы приложения">
+          <button
+            class="section-tab is-active"
+            data-section="tasks"
+            type="button"
+            aria-selected="true"
+          >
+            Задачи
+          </button>
+          <button
+            class="section-tab"
+            data-section="stats"
+            type="button"
+            aria-selected="false"
+          >
+            Статистика
+          </button>
+        </nav>
+
+        <section class="app-section is-active" id="tasks-section" data-section-panel="tasks">
+          <section class="day-switcher" aria-label="Рабочий день">
+            <div class="day-switcher-copy">
+              <span>Рабочий день</span>
+              <strong id="active-day-title">Сегодня</strong>
+              <p id="active-day-status">Проверяю состояние дня</p>
+            </div>
+            <div class="day-nav" aria-label="Переключение дней">
+              <button id="day-prev" type="button" aria-label="Предыдущий день">←</button>
+              <button id="day-today" type="button">Сегодня</button>
+              <button id="day-next" type="button" aria-label="Следующий день">→</button>
+            </div>
+          </section>
+
+          <div class="task-controls">
+            <form class="composer is-expanded" id="task-form" aria-expanded="true">
+              <label class="visually-hidden" for="task-input">Новая задача</label>
+              <input
+                id="task-input"
+                name="task"
+                type="text"
+                autocomplete="off"
+                placeholder="Что нужно сделать?"
+                maxlength="90"
+              />
+              <button class="composer-submit" type="submit" aria-label="Добавить задачу">
+                <span aria-hidden="true">+</span>
+              </button>
+              <button
+                class="composer-close"
+                id="composer-close"
+                type="button"
+                aria-label="Скрыть поле добавления"
+                hidden
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </form>
           </div>
-          <div class="day-nav" aria-label="Переключение дней">
-            <button id="day-prev" type="button" aria-label="Предыдущий день">←</button>
-            <button id="day-today" type="button">Сегодня</button>
-            <button id="day-next" type="button" aria-label="Следующий день">→</button>
-          </div>
+
+          <section class="list-shell" aria-label="Задачи">
+            <ul class="task-list" id="task-list"></ul>
+            <div class="empty" id="empty-state" hidden>
+              <div class="empty-mark" aria-hidden="true"></div>
+              <h2>Тут пока тихо</h2>
+              <p>Добавь одну маленькую задачу сверху. Даже “налить воды” считается.</p>
+            </div>
+          </section>
+
+          <section class="day-tools" aria-label="Итоги дня">
+            <div class="day-review" id="day-review" hidden>
+              <label for="day-rating">Оценка дня</label>
+              <select id="day-rating" name="day-rating">
+                <option value="5">5 · сильный день</option>
+                <option value="4" selected>4 · хороший день</option>
+                <option value="3">3 · нормальный день</option>
+                <option value="2">2 · тяжёлый день</option>
+                <option value="1">1 · день на минималках</option>
+              </select>
+              <label for="day-note">Заметка</label>
+              <textarea
+                id="day-note"
+                name="day-note"
+                rows="2"
+                maxlength="220"
+                placeholder="Что важно запомнить про этот день?"
+              ></textarea>
+              <div class="day-review-actions">
+                <button class="day-review-submit" id="day-review-submit" type="button">
+                  Сохранить итог
+                </button>
+                <button class="day-review-cancel" id="day-review-cancel" type="button">
+                  Отмена
+                </button>
+              </div>
+            </div>
+            <button class="day-close" id="close-day" type="button">Закрыть день</button>
+          </section>
         </section>
 
-        <div class="task-controls">
-          <form class="composer is-collapsed" id="task-form" aria-expanded="false">
-            <label class="visually-hidden" for="task-input">Новая задача</label>
-            <input
-              id="task-input"
-              name="task"
-              type="text"
-              autocomplete="off"
-              placeholder="Что нужно сделать?"
-              maxlength="90"
-            />
-            <label class="visually-hidden" for="task-priority">Приоритет задачи</label>
-            <select id="task-priority" name="priority" aria-label="Приоритет задачи">
-              <option value="low">Низкий</option>
-              <option value="medium" selected>Средний</option>
-              <option value="high">Высокий</option>
-            </select>
-            <button class="composer-submit" type="submit" aria-label="Открыть добавление задачи">
-              <span aria-hidden="true">+</span>
-            </button>
-            <button
-              class="composer-close"
-              id="composer-close"
-              type="button"
-              aria-label="Скрыть поле добавления"
-              hidden
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </form>
-
-          <nav class="tabs" aria-label="Режим списка">
-            <button class="tab is-active" type="button" data-view="now">Сегодня</button>
-            <button class="tab" type="button" data-view="later">Позже</button>
-            <button class="tab" type="button" data-view="soft">Когда будут силы</button>
-            <button class="tab" type="button" data-view="done">Выполнено</button>
-          </nav>
-        </div>
-
-        <div class="priority-filter" aria-label="Фильтр по приоритету">
-          <span>Приоритет</span>
-          <div class="priority-filter-options">
-            <button class="priority-filter-button is-active" type="button" data-priority="all">
-              Все
-            </button>
-            <button class="priority-filter-button" type="button" data-priority="high">
-              Высокий
-            </button>
-            <button class="priority-filter-button" type="button" data-priority="medium">
-              Средний
-            </button>
-            <button class="priority-filter-button" type="button" data-priority="low">
-              Низкий
-            </button>
-          </div>
-        </div>
-
-        <section class="list-shell" aria-label="Задачи">
-          <ul class="task-list" id="task-list"></ul>
-          <div class="empty" id="empty-state" hidden>
-            <div class="empty-mark" aria-hidden="true"></div>
-            <h2>Тут пока тихо</h2>
-            <p>Добавь одну маленькую задачу сверху. Даже “налить воды” считается.</p>
-          </div>
-        </section>
-
-        <section class="day-tools" aria-label="Итоги дня">
-          <div class="day-review">
-            <label for="day-rating">Оценка дня</label>
-            <select id="day-rating" name="day-rating">
-              <option value="5">5 · сильный день</option>
-              <option value="4" selected>4 · хороший день</option>
-              <option value="3">3 · нормальный день</option>
-              <option value="2">2 · тяжёлый день</option>
-              <option value="1">1 · день на минималках</option>
-            </select>
-            <label for="day-note">Заметка</label>
-            <textarea
-              id="day-note"
-              name="day-note"
-              rows="2"
-              maxlength="220"
-              placeholder="Что важно запомнить про этот день?"
-            ></textarea>
-          </div>
-          <button class="day-close" id="close-day" type="button">Закрыть день</button>
-        </section>
-
-        <section class="history" aria-label="История дней">
-          <div class="history-head">
-            <h2>История</h2>
-            <span id="history-count">0 дней</span>
-          </div>
-          <ol class="history-list" id="history-list"></ol>
-          <div class="week-summary" id="week-summary" aria-live="polite"></div>
+        <section class="app-section" id="stats-section" data-section-panel="stats" hidden>
+          <section class="history" aria-label="История дней">
+            <div class="history-head">
+              <h2>Статистика</h2>
+              <span id="history-count">0 дней</span>
+            </div>
+            <ol class="history-list" id="history-list"></ol>
+            <div class="week-summary" id="week-summary" aria-live="polite"></div>
+          </section>
         </section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="./supabase-client.js"></script>
-    <script src="./script.js"></script>
+    <script src="./supabase-client.js?v=auth-polish-3"></script>
+    <script src="./script.js?v=auth-polish-3"></script>
   </body>
 </html>

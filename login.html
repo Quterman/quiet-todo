@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Вход · Тихий список</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=auth-polish-3" />
   </head>
   <body>
     <main class="auth-page" aria-labelledby="auth-page-title">
@@ -12,41 +18,69 @@
         <div class="auth-card-head">
           <span>Тихий список</span>
           <h1 id="auth-page-title">Войти в аккаунт</h1>
-          <p>Задачи, история и прогресс будут храниться в Supabase.</p>
+          <p id="auth-page-copy" hidden></p>
+        </div>
+
+        <div class="auth-mode-tabs" id="auth-mode-tabs" aria-label="Режим входа">
+          <button class="is-active" data-auth-mode="signin" type="button">Вход</button>
+          <button data-auth-mode="signup" type="button">Регистрация</button>
         </div>
 
         <form class="login-form" id="login-form">
-          <label for="auth-email">Email</label>
-          <input id="auth-email" name="email" type="email" autocomplete="email" required />
-
-          <label for="auth-password">Пароль</label>
-          <input
-            id="auth-password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            minlength="6"
-            required
-          />
-
-          <div class="login-actions">
-            <button type="submit">Войти</button>
-            <button id="auth-signup" type="button">Создать аккаунт</button>
+          <div class="login-field" id="auth-email-field">
+            <label for="auth-email">Email</label>
+            <input
+              id="auth-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              required
+            />
           </div>
 
-          <button class="login-secondary" id="auth-resend" type="button">
-            Отправить письмо ещё раз
-          </button>
+          <div class="login-field" id="auth-password-field">
+            <label for="auth-password">Пароль</label>
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Минимум 6 символов"
+              minlength="6"
+              required
+            />
+          </div>
+
+          <div class="login-field" id="auth-confirm-field" hidden>
+            <label for="auth-password-confirm">Повтори пароль</label>
+            <input
+              id="auth-password-confirm"
+              name="password-confirm"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Повтори пароль"
+              minlength="6"
+            />
+          </div>
+
+          <button class="login-primary" id="auth-submit" type="submit">Войти</button>
+
+          <div class="login-links">
+            <button id="auth-forgot" type="button">Забыли пароль?</button>
+            <button id="auth-resend" type="button" hidden>
+              Отправить письмо подтверждения ещё раз
+            </button>
+            <button id="auth-back" type="button" hidden>Вернуться ко входу</button>
+          </div>
         </form>
 
-        <p class="login-status" id="auth-status" role="status">
-          Войди или создай аккаунт, чтобы продолжить.
-        </p>
+        <p class="login-status" id="auth-status" role="status" hidden></p>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="./supabase-client.js"></script>
-    <script src="./auth.js"></script>
+    <script src="./supabase-client.js?v=auth-polish-3"></script>
+    <script src="./auth.js?v=auth-polish-3"></script>
   </body>
 </html>

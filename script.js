@@ -19,24 +19,6 @@ const initialTasks = [
     priority: "medium",
     dateKey: getTodayKey(),
   },
-  {
-    id: crypto.randomUUID(),
-    title: "Перекинуть что-то неважное в “Позже”",
-    view: "later",
-    done: false,
-    completedFrom: null,
-    priority: "medium",
-    dateKey: getTodayKey(),
-  },
-  {
-    id: crypto.randomUUID(),
-    title: "Оставить место для дня без героизма",
-    view: "soft",
-    done: false,
-    completedFrom: null,
-    priority: "medium",
-    dateKey: getTodayKey(),
-  },
 ];
 
 const views = {
@@ -47,15 +29,14 @@ const views = {
 };
 
 const priorities = {
-  low: "Низкий",
-  medium: "Средний",
-  high: "Высокий",
+  low: "Обычная",
+  medium: "Обычная",
+  high: "Важная",
 };
 
 const taskControls = document.querySelector(".task-controls");
 const form = document.querySelector("#task-form");
 const input = document.querySelector("#task-input");
-const prioritySelect = document.querySelector("#task-priority");
 const composerSubmit = document.querySelector(".composer-submit");
 const composerClose = document.querySelector("#composer-close");
 const list = document.querySelector("#task-list");
@@ -72,8 +53,11 @@ const activeDayStatus = document.querySelector("#active-day-status");
 const dayPrevButton = document.querySelector("#day-prev");
 const dayTodayButton = document.querySelector("#day-today");
 const dayNextButton = document.querySelector("#day-next");
+const dayReview = document.querySelector("#day-review");
 const dayRating = document.querySelector("#day-rating");
 const dayNote = document.querySelector("#day-note");
+const dayReviewSubmit = document.querySelector("#day-review-submit");
+const dayReviewCancel = document.querySelector("#day-review-cancel");
 const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
 const weekSummary = document.querySelector("#week-summary");
@@ -81,20 +65,17 @@ const authPanel = document.querySelector(".auth-panel");
 const authLogout = document.querySelector("#auth-logout");
 const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
-const tabs = Array.from(document.querySelectorAll(".tab"));
-const priorityFilterButtons = Array.from(
-  document.querySelectorAll(".priority-filter-button"),
-);
+const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
+const sectionPanels = Array.from(document.querySelectorAll("[data-section-panel]"));
 
-let currentView = "now";
-let currentPriority = "all";
 let activeDayKey = loadActiveDayKey();
 let tasks = loadTasks();
 let history = loadHistory();
 activeDayKey = chooseActiveDayKey(activeDayKey);
 let draggedTaskId = null;
 let pointerDrag = null;
-let composerExpanded = false;
+let composerExpanded = true;
+let currentSection = "tasks";
 let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudData = false;
@@ -344,7 +325,7 @@ async function loadCloudData() {
   saveActiveDayKey();
   isLoadingCloudData = false;
   setAuthStatus("Данные загружены из Supabase");
-  switchView(currentView);
+  render();
 }
 
 function setAuthStatus(text) {
@@ -373,7 +354,7 @@ async function signOut() {
 async function initializeAuth() {
   if (!supabaseClient) {
     setAuthStatus("Supabase не загрузился, работаем локально");
-    switchView(currentView);
+    render();
     return;
   }
 
@@ -408,7 +389,7 @@ function render() {
   const visibleTasks = getVisibleTasks();
   const dayClosed = isActiveDayClosed();
   const dayActiveTasks = getEditableTasksForDay(activeDayKey).filter(
-    (task) => task.view === "now" && !task.done,
+    (task) => !task.done,
   ).length;
 
   if (openCount) {
@@ -416,6 +397,7 @@ function render() {
   }
   renderDaySwitcher();
   updateProgress();
+  updateComposerLock();
   renderHistory();
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
@@ -424,7 +406,7 @@ function render() {
     const item = document.createElement("li");
     item.className = `task${task.done ? " is-done" : ""}`;
     item.dataset.id = task.id;
-    item.draggable = !dayClosed && !task.done && currentView !== "done";
+    item.draggable = !dayClosed && !task.done;
 
     const check = document.createElement("button");
     check.className = "task-check";
@@ -438,10 +420,18 @@ function render() {
     title.className = "task-title";
     title.textContent = task.title;
 
-    const priority = document.createElement("span");
+    const priority = document.createElement("button");
     priority.className = `task-priority is-${task.priority}`;
-    priority.textContent = priorities[task.priority];
-    priority.setAttribute("aria-label", `Приоритет: ${priorities[task.priority]}`);
+    priority.type = "button";
+    priority.disabled = dayClosed;
+    priority.textContent = task.priority === "high" ? "★" : "☆";
+    priority.title =
+      task.priority === "high" ? "Снять важность" : "Сделать задачу важной";
+    priority.setAttribute(
+      "aria-label",
+      task.priority === "high" ? "Снять важность" : "Сделать задачу важной",
+    );
+    priority.addEventListener("click", () => togglePriority(task.id));
 
     const taskCopy = document.createElement("div");
     taskCopy.className = "task-copy";
@@ -458,6 +448,21 @@ function render() {
     item.append(check, taskCopy, remove);
     wireDragEvents(item, task);
     list.append(item);
+  }
+}
+
+function switchSection(section) {
+  currentSection = section === "stats" ? "stats" : "tasks";
+
+  for (const tab of sectionTabs) {
+    const isActive = tab.dataset.section === currentSection;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  }
+
+  for (const panel of sectionPanels) {
+    panel.hidden = panel.dataset.sectionPanel !== currentSection;
+    panel.classList.toggle("is-active", panel.dataset.sectionPanel === currentSection);
   }
 }
 
@@ -483,6 +488,22 @@ function updateProgress() {
   closeDayButton.textContent = dayClosed ? "День закрыт" : "Закрыть день";
   dayRating.disabled = dayClosed || dayGoalTasks.length === 0;
   dayNote.disabled = dayClosed || dayGoalTasks.length === 0;
+
+  if (dayClosed || dayGoalTasks.length === 0) {
+    hideDayReview();
+  }
+}
+
+function updateComposerLock() {
+  const blockingDayKey = getBlockingOpenDayKey();
+  const inputLocked = isActiveDayClosed() || Boolean(blockingDayKey && blockingDayKey !== activeDayKey);
+
+  input.disabled = inputLocked;
+  composerSubmit.disabled = inputLocked;
+  composerClose.disabled = inputLocked;
+  form.classList.toggle("is-locked", inputLocked);
+
+  input.placeholder = inputLocked ? "День закрыт или ждёт закрытия другой день" : "Что нужно сделать?";
 }
 
 function getActiveDayGoalTasks() {
@@ -492,9 +513,7 @@ function getActiveDayGoalTasks() {
     return closedItem.archivedTasks;
   }
 
-  return getEditableTasksForDay(activeDayKey).filter(
-    (task) => task.view === "now" || task.completedFrom === "now",
-  );
+  return getEditableTasksForDay(activeDayKey);
 }
 
 function getActiveDayStats() {
@@ -821,7 +840,8 @@ function setActiveDayKey(dateKey) {
 
   activeDayKey = normalized;
   saveActiveDayKey();
-  switchView(currentView);
+  hideDayReview();
+  render();
 }
 
 function renderDaySwitcher() {
@@ -854,20 +874,16 @@ function renderDaySwitcher() {
 }
 
 function setComposerExpanded(expanded, { focus = false } = {}) {
-  composerExpanded = expanded;
-  form.classList.toggle("is-expanded", expanded);
-  form.classList.toggle("is-collapsed", !expanded);
-  form.setAttribute("aria-expanded", String(expanded));
-  taskControls.classList.toggle("is-composer-open", expanded);
-  composerClose.hidden = !expanded;
-  composerSubmit.setAttribute(
-    "aria-label",
-    expanded ? "Добавить задачу" : "Открыть добавление задачи",
-  );
-  input.tabIndex = expanded ? 0 : -1;
-  prioritySelect.tabIndex = expanded ? 0 : -1;
+  composerExpanded = true;
+  form.classList.add("is-expanded");
+  form.classList.remove("is-collapsed");
+  form.setAttribute("aria-expanded", "true");
+  taskControls.classList.remove("is-composer-open");
+  composerClose.hidden = true;
+  composerSubmit.setAttribute("aria-label", "Добавить задачу");
+  input.tabIndex = 0;
 
-  if (expanded && focus) {
+  if ((expanded || composerExpanded) && focus) {
     input.focus();
   }
 }
@@ -893,34 +909,47 @@ function getClosedDayWord(count) {
 
 function getVisibleTasks() {
   const dayTasks = getRenderableTasksForActiveDay();
-  const tasksInView =
-    currentView === "done"
-      ? dayTasks.filter((task) => task.done)
-      : dayTasks.filter((task) => task.view === currentView);
-
-  return currentPriority === "all"
-    ? tasksInView
-    : tasksInView.filter((task) => task.priority === currentPriority);
+  return dayTasks
+    .map((task, index) => ({ task, index }))
+    .sort((left, right) => {
+      const priorityDelta = getPriorityRank(right.task.priority) - getPriorityRank(left.task.priority);
+      return priorityDelta || left.index - right.index;
+    })
+    .map((item) => item.task);
 }
 
-function addTask(title, priority) {
+function addTask(title) {
   if (isActiveDayClosed() || (getBlockingOpenDayKey() && getBlockingOpenDayKey() !== activeDayKey)) {
     return;
-  }
-
-  if (currentView === "done") {
-    switchView("now");
   }
 
   tasks.unshift({
     id: crypto.randomUUID(),
     title,
-    view: currentView === "done" ? "now" : currentView,
+    view: "now",
     done: false,
     completedFrom: null,
-    priority: priorities[priority] ? priority : "medium",
+    priority: "medium",
     dateKey: activeDayKey,
   });
+  saveTasks();
+  render();
+}
+
+function getPriorityRank(priority) {
+  return priority === "high" ? 1 : 0;
+}
+
+function togglePriority(id) {
+  if (isActiveDayClosed()) {
+    return;
+  }
+
+  tasks = tasks.map((task) =>
+    task.id === id
+      ? { ...task, priority: task.priority === "high" ? "medium" : "high" }
+      : task,
+  );
   saveTasks();
   render();
 }
@@ -952,6 +981,11 @@ function closeDay() {
     return;
   }
 
+  if (dayReview.hidden) {
+    showDayReview();
+    return;
+  }
+
   const dayGoalTasks = getActiveDayGoalTasks().map((task) => ({
     ...task,
     view: "now",
@@ -962,13 +996,6 @@ function closeDay() {
   const nextDayKey = compareDateKeys(activeDayKey, getTodayKey()) < 0
     ? getTodayKey()
     : addDays(activeDayKey, 1);
-  const confirmed = window.confirm(
-    `Закрыть ${formatDayLabel(activeDayKey).toLowerCase()}? Итог: ${stats.completed} из ${stats.total}, ${stats.percent}%. Невыполненные задачи перейдут дальше.`
-  );
-
-  if (!confirmed) {
-    return;
-  }
 
   history = history.filter((item) => item.dateKey !== activeDayKey);
   history.unshift({
@@ -992,7 +1019,7 @@ function closeDay() {
       return {
         ...task,
         dateKey: nextDayKey,
-        view: task.view === "now" ? "later" : task.view,
+        view: "now",
         completedFrom: null,
       };
     });
@@ -1001,11 +1028,24 @@ function closeDay() {
     activeDayKey = getTodayKey();
   }
   dayNote.value = "";
-  currentView = "now";
   saveActiveDayKey();
   saveTasks();
   saveHistory();
-  switchView("now");
+  hideDayReview();
+  render();
+}
+
+function showDayReview() {
+  dayReview.hidden = false;
+  closeDayButton.hidden = true;
+  dayRating.disabled = false;
+  dayNote.disabled = false;
+  dayNote.focus();
+}
+
+function hideDayReview() {
+  dayReview.hidden = true;
+  closeDayButton.hidden = false;
 }
 
 function undoCloseDay(historyId) {
@@ -1033,59 +1073,10 @@ function undoCloseDay(historyId) {
   history = history.filter((entry) => entry.id !== historyId);
 
   activeDayKey = item.dateKey;
-  currentView = "now";
   saveActiveDayKey();
   saveTasks();
   saveHistory();
-  switchView("now");
-}
-
-function switchView(view) {
-  currentView = view;
-  tabs.forEach((tab) => {
-    tab.classList.toggle("is-active", tab.dataset.view === view);
-    tab.setAttribute("aria-current", tab.dataset.view === view ? "page" : "false");
-  });
-  const blockingDayKey = getBlockingOpenDayKey();
-  const dayLocked = isActiveDayClosed() || Boolean(blockingDayKey && blockingDayKey !== activeDayKey);
-  const inputLocked = view === "done" || dayLocked;
-
-  input.disabled = inputLocked;
-  prioritySelect.disabled = inputLocked;
-  composerSubmit.disabled = inputLocked;
-  composerClose.disabled = inputLocked;
-  form.classList.toggle("is-locked", inputLocked);
-
-  if (inputLocked) {
-    setComposerExpanded(false);
-  }
-
-  input.placeholder =
-    view === "done"
-      ? "Выполненные задачи живут отдельно"
-      : dayLocked
-      ? "День закрыт или ждёт закрытия другой день"
-      : `Добавить в “${views[view]}”`;
   render();
-}
-
-function switchPriorityFilter(priority) {
-  currentPriority = priority === "all" || priorities[priority] ? priority : "all";
-  priorityFilterButtons.forEach((button) => {
-    const active = button.dataset.priority === currentPriority;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  render();
-}
-
-function setPriorityFilter(priority) {
-  currentPriority = priority === "all" || priorities[priority] ? priority : "all";
-  priorityFilterButtons.forEach((button) => {
-    const active = button.dataset.priority === currentPriority;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
 }
 
 function wireDragEvents(item, task) {
@@ -1124,12 +1115,11 @@ function startPointerDrag(event, item, task) {
   item.setPointerCapture?.(event.pointerId);
 }
 
-function moveTask(taskId, nextView, beforeId = null) {
+function moveTask(taskId, beforeId = null) {
   const movingTask = tasks.find((task) => task.id === taskId);
 
   if (
     !movingTask ||
-    nextView === "done" ||
     movingTask.dateKey !== activeDayKey ||
     isActiveDayClosed()
   ) {
@@ -1137,10 +1127,8 @@ function moveTask(taskId, nextView, beforeId = null) {
   }
 
   const remainingTasks = tasks.filter((task) => task.id !== taskId);
-  const updatedTask = { ...movingTask, view: nextView, done: false, completedFrom: null };
-  const insertIndex = beforeId
-    ? remainingTasks.findIndex((task) => task.id === beforeId)
-    : findAppendIndex(remainingTasks, nextView);
+  const updatedTask = { ...movingTask, view: "now", done: false, completedFrom: null };
+  const insertIndex = beforeId ? remainingTasks.findIndex((task) => task.id === beforeId) : tasks.length;
 
   if (insertIndex >= 0) {
     remainingTasks.splice(insertIndex, 0, updatedTask);
@@ -1149,14 +1137,8 @@ function moveTask(taskId, nextView, beforeId = null) {
   }
 
   tasks = remainingTasks;
-  currentView = nextView;
   saveTasks();
-  switchView(nextView);
-}
-
-function findAppendIndex(taskList, view) {
-  const lastIndexInView = taskList.findLastIndex((task) => task.view === view);
-  return lastIndexInView === -1 ? taskList.length : lastIndexInView + 1;
+  render();
 }
 
 function getDropPosition(event) {
@@ -1210,17 +1192,8 @@ function getDropPositionFromPoint(x, y) {
   };
 }
 
-function getTabFromPoint(x, y) {
-  const target = document.elementFromPoint(x, y);
-  const tab = target?.closest(".tab");
-  return tab && tab.dataset.view !== "done" && !isActiveDayClosed()
-    ? tab
-    : null;
-}
-
 function clearDropHints({ includeDragging = false } = {}) {
   listShell.classList.remove("is-drop-target");
-  tabs.forEach((tab) => tab.classList.remove("is-drop-target"));
   list.querySelectorAll(".task").forEach((item) => {
     item.classList.remove("is-drop-before", "is-drop-after");
     if (includeDragging) {
@@ -1230,7 +1203,7 @@ function clearDropHints({ includeDragging = false } = {}) {
 }
 
 listShell.addEventListener("dragover", (event) => {
-  if (!draggedTaskId || currentView === "done") {
+  if (!draggedTaskId || isActiveDayClosed()) {
     return;
   }
 
@@ -1245,48 +1218,19 @@ listShell.addEventListener("dragover", (event) => {
 });
 
 listShell.addEventListener("drop", (event) => {
-  if (!draggedTaskId || currentView === "done") {
+  if (!draggedTaskId || isActiveDayClosed()) {
     return;
   }
 
   event.preventDefault();
   const { beforeId } = getDropPosition(event);
-  moveTask(draggedTaskId, currentView, beforeId === draggedTaskId ? null : beforeId);
+  moveTask(draggedTaskId, beforeId === draggedTaskId ? null : beforeId);
 });
 
 listShell.addEventListener("dragleave", (event) => {
   if (!listShell.contains(event.relatedTarget)) {
     clearDropHints({ includeDragging: true });
   }
-});
-
-tabs.forEach((tab) => {
-  tab.addEventListener("dragover", (event) => {
-    if (
-      !draggedTaskId ||
-      tab.dataset.view === "done" ||
-      isActiveDayClosed()
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    tabs.forEach((tabItem) => tabItem.classList.remove("is-drop-target"));
-    tab.classList.add("is-drop-target");
-  });
-
-  tab.addEventListener("drop", (event) => {
-    if (
-      !draggedTaskId ||
-      tab.dataset.view === "done" ||
-      isActiveDayClosed()
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    moveTask(draggedTaskId, tab.dataset.view);
-  });
 });
 
 document.addEventListener("pointermove", (event) => {
@@ -1305,13 +1249,7 @@ document.addEventListener("pointermove", (event) => {
   event.preventDefault();
   clearDropHints();
 
-  const tab = getTabFromPoint(event.clientX, event.clientY);
-  if (tab) {
-    tab.classList.add("is-drop-target");
-    return;
-  }
-
-  if (currentView === "done") {
+  if (isActiveDayClosed()) {
     return;
   }
 
@@ -1340,19 +1278,11 @@ document.addEventListener("pointerup", (event) => {
   }
 
   event.preventDefault();
-  const tab = getTabFromPoint(event.clientX, event.clientY);
-
-  if (tab) {
-    moveTask(finishedDrag.id, tab.dataset.view);
-    clearDropHints({ includeDragging: true });
-    draggedTaskId = null;
-    return;
-  }
 
   const target = document.elementFromPoint(event.clientX, event.clientY);
-  if (target && listShell.contains(target) && currentView !== "done") {
+  if (target && listShell.contains(target) && !isActiveDayClosed()) {
     const { beforeId } = getDropPositionFromPoint(event.clientX, event.clientY);
-    moveTask(finishedDrag.id, currentView, beforeId === finishedDrag.id ? null : beforeId);
+    moveTask(finishedDrag.id, beforeId === finishedDrag.id ? null : beforeId);
   }
 
   clearDropHints({ includeDragging: true });
@@ -1362,11 +1292,6 @@ document.addEventListener("pointerup", (event) => {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  if (!composerExpanded) {
-    setComposerExpanded(true, { focus: true });
-    return;
-  }
-
   const title = input.value.trim();
 
   if (!title) {
@@ -1374,23 +1299,21 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  addTask(title, prioritySelect.value);
+  addTask(title);
   input.value = "";
-  prioritySelect.value = "medium";
   input.focus();
 });
 
 composerClose.addEventListener("click", () => {
-  setComposerExpanded(false);
+  input.value = "";
+  input.focus();
 });
 
-tabs.forEach((tab) => {
-  tab.addEventListener("click", () => switchView(tab.dataset.view));
-});
-
-priorityFilterButtons.forEach((button) => {
-  button.addEventListener("click", () => switchPriorityFilter(button.dataset.priority));
-});
+for (const tab of sectionTabs) {
+  tab.addEventListener("click", () => {
+    switchSection(tab.dataset.section);
+  });
+}
 
 dayPrevButton.addEventListener("click", () => {
   setActiveDayKey(addDays(activeDayKey, -1));
@@ -1406,10 +1329,16 @@ dayNextButton.addEventListener("click", () => {
 
 closeDayButton.addEventListener("click", closeDay);
 
+dayReviewSubmit.addEventListener("click", closeDay);
+
+dayReviewCancel.addEventListener("click", () => {
+  hideDayReview();
+});
+
 authLogout.addEventListener("click", () => {
   signOut();
 });
 
-setComposerExpanded(false);
-setPriorityFilter("all");
+setComposerExpanded(true);
+switchSection(currentSection);
 initializeAuth();
