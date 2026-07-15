@@ -40,6 +40,19 @@
           </section>
         </header>
 
+        <section class="day-switcher" aria-label="Рабочий день">
+          <div class="day-switcher-copy">
+            <span>Рабочий день</span>
+            <strong id="active-day-title">Сегодня</strong>
+            <p id="active-day-status">Проверяю состояние дня</p>
+          </div>
+          <div class="day-nav" aria-label="Переключение дней">
+            <button id="day-prev" type="button" aria-label="Предыдущий день">←</button>
+            <button id="day-today" type="button">Сегодня</button>
+            <button id="day-next" type="button" aria-label="Следующий день">→</button>
+          </div>
+        </section>
+
         <div class="task-controls">
           <form class="composer is-collapsed" id="task-form" aria-expanded="false">
             <label class="visually-hidden" for="task-input">Новая задача</label>
@@ -107,6 +120,24 @@
         </section>
 
         <section class="day-tools" aria-label="Итоги дня">
+          <div class="day-review">
+            <label for="day-rating">Оценка дня</label>
+            <select id="day-rating" name="day-rating">
+              <option value="5">5 · сильный день</option>
+              <option value="4" selected>4 · хороший день</option>
+              <option value="3">3 · нормальный день</option>
+              <option value="2">2 · тяжёлый день</option>
+              <option value="1">1 · день на минималках</option>
+            </select>
+            <label for="day-note">Заметка</label>
+            <textarea
+              id="day-note"
+              name="day-note"
+              rows="2"
+              maxlength="220"
+              placeholder="Что важно запомнить про этот день?"
+            ></textarea>
+          </div>
           <button class="day-close" id="close-day" type="button">Закрыть день</button>
         </section>
 

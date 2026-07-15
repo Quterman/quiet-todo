@@ -29,7 +29,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -331,6 +332,66 @@ h1 {
   line-height: 1.35;
 }
 
+.day-switcher {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.day-switcher-copy {
+  min-width: 0;
+}
+
+.day-switcher-copy span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.day-switcher-copy strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.day-switcher-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.day-nav {
+  display: grid;
+  grid-template-columns: 34px auto 34px;
+  gap: 5px;
+}
+
+.day-nav button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 820;
+}
+
+.day-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .task-controls {
   display: flex;
   align-items: stretch;
@@ -514,7 +575,60 @@ h1 {
 }
 
 .day-tools {
-  display: block;
+  display: grid;
+  gap: 8px;
+}
+
+.day-review {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+  gap: 6px 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.day-review label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+}
+
+.day-review select,
+.day-review textarea {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  outline: none;
+}
+
+.day-review select {
+  height: 36px;
+  padding: 0 10px;
+}
+
+.day-review textarea {
+  min-height: 54px;
+  resize: vertical;
+  padding: 9px 10px;
+  line-height: 1.3;
+}
+
+.day-review select:focus,
+.day-review textarea:focus {
+  border-color: var(--mint-strong);
+  box-shadow: 0 0 0 3px rgba(118, 183, 149, 0.16);
+}
+
+.day-review select:disabled,
+.day-review textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .day-close {
@@ -665,6 +779,15 @@ h1 {
 .calendar-day.is-today {
   border-color: #a7bfaf;
   box-shadow: inset 0 0 0 1px #a7bfaf;
+}
+
+.calendar-day.is-active {
+  border-color: #6fa287;
+  box-shadow: inset 0 0 0 2px #6fa287;
+}
+
+.calendar-day.is-selectable {
+  cursor: pointer;
 }
 
 .calendar-day.is-closed {
@@ -921,6 +1044,12 @@ h1 {
   background: rgba(242, 139, 119, 0.14);
 }
 
+.task-check:disabled,
+.task-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .empty {
   min-height: 280px;
   display: grid;
@@ -1017,6 +1146,14 @@ h1 {
     width: 100%;
   }
 
+  .day-switcher {
+    grid-template-columns: 1fr;
+  }
+
+  .day-nav {
+    grid-template-columns: 38px 1fr 38px;
+  }
+
   .composer.is-expanded {
     grid-template-columns: minmax(0, 1fr) 96px 40px 34px;
   }
@@ -1043,6 +1180,10 @@ h1 {
 
   .day-close {
     width: 100%;
+  }
+
+  .day-review {
+    grid-template-columns: 1fr;
   }
 
   .history {

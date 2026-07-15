@@ -1,5 +1,6 @@
 const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
+const ACTIVE_DAY_KEY = "quiet-todo.active-day";
 const supabaseClient = window.quietTodoSupabase;
 const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
 const verificationTaskTitles = new Set([
@@ -16,6 +17,7 @@ const initialTasks = [
     done: false,
     completedFrom: null,
     priority: "medium",
+    dateKey: getTodayKey(),
   },
   {
     id: crypto.randomUUID(),
@@ -24,6 +26,7 @@ const initialTasks = [
     done: false,
     completedFrom: null,
     priority: "medium",
+    dateKey: getTodayKey(),
   },
   {
     id: crypto.randomUUID(),
@@ -32,6 +35,7 @@ const initialTasks = [
     done: false,
     completedFrom: null,
     priority: "medium",
+    dateKey: getTodayKey(),
   },
 ];
 
@@ -63,6 +67,13 @@ const progressLabel = document.querySelector("#progress-label");
 const progressDetail = document.querySelector("#progress-detail");
 const progressTrack = document.querySelector(".progress-track");
 const closeDayButton = document.querySelector("#close-day");
+const activeDayTitle = document.querySelector("#active-day-title");
+const activeDayStatus = document.querySelector("#active-day-status");
+const dayPrevButton = document.querySelector("#day-prev");
+const dayTodayButton = document.querySelector("#day-today");
+const dayNextButton = document.querySelector("#day-next");
+const dayRating = document.querySelector("#day-rating");
+const dayNote = document.querySelector("#day-note");
 const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
 const weekSummary = document.querySelector("#week-summary");
@@ -77,8 +88,10 @@ const priorityFilterButtons = Array.from(
 
 let currentView = "now";
 let currentPriority = "all";
+let activeDayKey = loadActiveDayKey();
 let tasks = loadTasks();
 let history = loadHistory();
+activeDayKey = chooseActiveDayKey(activeDayKey);
 let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = false;
@@ -120,6 +133,11 @@ function loadHistory() {
   }
 }
 
+function loadActiveDayKey() {
+  const saved = localStorage.getItem(ACTIVE_DAY_KEY);
+  return normalizeDateKey(saved) || getTodayKey();
+}
+
 function normalizeTask(task) {
   return {
     id: task.id || crypto.randomUUID(),
@@ -128,22 +146,26 @@ function normalizeTask(task) {
     done: Boolean(task.done),
     completedFrom: task.completedFrom || (task.done ? task.view : null),
     priority: priorities[task.priority] ? task.priority : "medium",
+    dateKey: normalizeDateKey(task.dateKey) || getTodayKey(),
   };
 }
 
 function normalizeHistoryItem(item) {
   const date = item.date || new Date().toISOString();
+  const dateKey = normalizeDateKey(item.dateKey) || getDateKey(new Date(date));
 
   return {
     id: item.id || crypto.randomUUID(),
     date,
-    dateKey: item.dateKey || getDateKey(new Date(date)),
+    dateKey,
     total: Number(item.total) || 0,
     completed: Number(item.completed) || 0,
     moved: Number(item.moved) || 0,
     percent: Number(item.percent) || 0,
+    rating: item.rating ? Number(item.rating) : null,
+    note: item.note || "",
     archivedTasks: Array.isArray(item.archivedTasks)
-      ? item.archivedTasks.map((task) => normalizeTask(task))
+      ? item.archivedTasks.map((task) => normalizeTask({ ...task, dateKey: task.dateKey || dateKey }))
       : [],
   };
 }
@@ -160,6 +182,10 @@ function saveHistory() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   }
   scheduleCloudSave();
+}
+
+function saveActiveDayKey() {
+  localStorage.setItem(ACTIVE_DAY_KEY, activeDayKey);
 }
 
 function scheduleCloudSave() {
@@ -189,6 +215,7 @@ async function saveCloudData() {
     done: task.done,
     completed_from: task.completedFrom,
     priority: task.priority,
+    date_key: task.dateKey,
     sort_order: index,
   }));
   const historyRows = history.map((item) => ({
@@ -199,34 +226,58 @@ async function saveCloudData() {
     completed: item.completed,
     moved: item.moved,
     percent: item.percent,
+    rating: item.rating,
+    note: item.note,
     archived_tasks: item.archivedTasks,
     created_at: item.date,
   }));
 
-  const tasksDelete = await supabaseClient.from("tasks").delete().eq("user_id", userId);
-  if (tasksDelete.error) {
-    setAuthStatus(`Ошибка сохранения задач: ${tasksDelete.error.message}`);
-    return;
-  }
+  if (historyRows.length > 0) {
+    const historyUpsert = await supabaseClient
+      .from("day_history")
+      .upsert(historyRows, { onConflict: "user_id,date_key" });
+    if (historyUpsert.error) {
+      setAuthStatus(`Ошибка сохранения истории: ${historyUpsert.error.message}`);
+      return;
+    }
 
-  if (taskRows.length > 0) {
-    const tasksInsert = await supabaseClient.from("tasks").insert(taskRows);
-    if (tasksInsert.error) {
-      setAuthStatus(`Ошибка сохранения задач: ${tasksInsert.error.message}`);
+    const historyDelete = await supabaseClient
+      .from("day_history")
+      .delete()
+      .eq("user_id", userId)
+      .not("id", "in", `(${historyRows.map((item) => item.id).join(",")})`);
+    if (historyDelete.error) {
+      setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
+      return;
+    }
+  } else {
+    const historyDelete = await supabaseClient.from("day_history").delete().eq("user_id", userId);
+    if (historyDelete.error) {
+      setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
       return;
     }
   }
 
-  const historyDelete = await supabaseClient.from("day_history").delete().eq("user_id", userId);
-  if (historyDelete.error) {
-    setAuthStatus(`Ошибка сохранения истории: ${historyDelete.error.message}`);
-    return;
-  }
+  if (taskRows.length > 0) {
+    const tasksUpsert = await supabaseClient.from("tasks").upsert(taskRows, { onConflict: "id" });
+    if (tasksUpsert.error) {
+      setAuthStatus(`Ошибка сохранения задач: ${tasksUpsert.error.message}`);
+      return;
+    }
 
-  if (historyRows.length > 0) {
-    const historyInsert = await supabaseClient.from("day_history").insert(historyRows);
-    if (historyInsert.error) {
-      setAuthStatus(`Ошибка сохранения истории: ${historyInsert.error.message}`);
+    const tasksDelete = await supabaseClient
+      .from("tasks")
+      .delete()
+      .eq("user_id", userId)
+      .not("id", "in", `(${taskRows.map((item) => item.id).join(",")})`);
+    if (tasksDelete.error) {
+      setAuthStatus(`Ошибка очистки задач: ${tasksDelete.error.message}`);
+      return;
+    }
+  } else {
+    const tasksDelete = await supabaseClient.from("tasks").delete().eq("user_id", userId);
+    if (tasksDelete.error) {
+      setAuthStatus(`Ошибка очистки задач: ${tasksDelete.error.message}`);
       return;
     }
   }
@@ -271,6 +322,7 @@ async function loadCloudData() {
       done: row.done,
       completedFrom: row.completed_from,
       priority: row.priority,
+      dateKey: row.date_key,
     }),
   );
   history = historyResult.data.map((row) =>
@@ -282,10 +334,14 @@ async function loadCloudData() {
       completed: row.completed,
       moved: row.moved,
       percent: row.percent,
+      rating: row.rating,
+      note: row.note,
       archivedTasks: row.archived_tasks,
     }),
   );
 
+  activeDayKey = chooseActiveDayKey(activeDayKey);
+  saveActiveDayKey();
   isLoadingCloudData = false;
   setAuthStatus("Данные загружены из Supabase");
   switchView(currentView);
@@ -350,11 +406,15 @@ async function initializeAuth() {
 
 function render() {
   const visibleTasks = getVisibleTasks();
-  const todayActiveTasks = tasks.filter((task) => task.view === "now" && !task.done).length;
+  const dayClosed = isActiveDayClosed();
+  const dayActiveTasks = getEditableTasksForDay(activeDayKey).filter(
+    (task) => task.view === "now" && !task.done,
+  ).length;
 
   if (openCount) {
-    openCount.textContent = todayActiveTasks;
+    openCount.textContent = dayActiveTasks;
   }
+  renderDaySwitcher();
   updateProgress();
   renderHistory();
   list.innerHTML = "";
@@ -364,11 +424,12 @@ function render() {
     const item = document.createElement("li");
     item.className = `task${task.done ? " is-done" : ""}`;
     item.dataset.id = task.id;
-    item.draggable = !task.done && currentView !== "done";
+    item.draggable = !dayClosed && !task.done && currentView !== "done";
 
     const check = document.createElement("button");
     check.className = "task-check";
     check.type = "button";
+    check.disabled = dayClosed;
     check.setAttribute("aria-label", task.done ? "Вернуть задачу" : "Отметить выполненной");
     check.textContent = "✓";
     check.addEventListener("click", () => toggleTask(task.id));
@@ -389,6 +450,7 @@ function render() {
     const remove = document.createElement("button");
     remove.className = "task-delete";
     remove.type = "button";
+    remove.disabled = dayClosed;
     remove.setAttribute("aria-label", "Удалить задачу");
     remove.textContent = "×";
     remove.addEventListener("click", () => deleteTask(task.id));
@@ -400,43 +462,53 @@ function render() {
 }
 
 function updateProgress() {
-  const todayGoalTasks = getTodayGoalTasks();
-  const doneTodayTasks = todayGoalTasks.filter((task) => task.done);
-  const todayClosed = isTodayClosed();
+  const dayGoalTasks = getActiveDayGoalTasks();
+  const doneDayTasks = dayGoalTasks.filter((task) => task.done);
+  const dayClosed = isActiveDayClosed();
   const progress =
-    todayGoalTasks.length === 0
+    dayGoalTasks.length === 0
       ? 0
-      : Math.round((doneTodayTasks.length / todayGoalTasks.length) * 100);
+      : Math.round((doneDayTasks.length / dayGoalTasks.length) * 100);
 
   progressFill.style.setProperty("--progress", `${progress}%`);
   progressTrack.setAttribute("aria-valuenow", String(progress));
   progressLabel.textContent = `${progress}%`;
   progressDetail.textContent =
-    todayClosed
-      ? "День закрыт. Отмени закрытие в истории, чтобы продолжить"
-      : todayGoalTasks.length === 0
+    dayClosed
+      ? "День закрыт. Можно посмотреть задачи и итог"
+      : dayGoalTasks.length === 0
       ? "Добавь задачу в “Сегодня”, и шкала оживёт"
-      : `${doneTodayTasks.length} из ${todayGoalTasks.length} на сегодня завершено`;
-  closeDayButton.disabled = todayGoalTasks.length === 0 || todayClosed;
-  closeDayButton.textContent = todayClosed ? "День закрыт" : "Закрыть день";
+      : `${doneDayTasks.length} из ${dayGoalTasks.length} за день завершено`;
+  closeDayButton.disabled = dayGoalTasks.length === 0 || dayClosed;
+  closeDayButton.textContent = dayClosed ? "День закрыт" : "Закрыть день";
+  dayRating.disabled = dayClosed || dayGoalTasks.length === 0;
+  dayNote.disabled = dayClosed || dayGoalTasks.length === 0;
 }
 
-function getTodayGoalTasks() {
-  return tasks.filter((task) => task.view === "now" || task.completedFrom === "now");
+function getActiveDayGoalTasks() {
+  const closedItem = getHistoryItem(activeDayKey);
+
+  if (closedItem) {
+    return closedItem.archivedTasks;
+  }
+
+  return getEditableTasksForDay(activeDayKey).filter(
+    (task) => task.view === "now" || task.completedFrom === "now",
+  );
 }
 
-function getTodayStats() {
-  const todayGoalTasks = getTodayGoalTasks();
-  const doneTodayTasks = todayGoalTasks.filter((task) => task.done);
+function getActiveDayStats() {
+  const dayGoalTasks = getActiveDayGoalTasks();
+  const doneDayTasks = dayGoalTasks.filter((task) => task.done);
 
   return {
-    total: todayGoalTasks.length,
-    completed: doneTodayTasks.length,
-    moved: todayGoalTasks.length - doneTodayTasks.length,
+    total: dayGoalTasks.length,
+    completed: doneDayTasks.length,
+    moved: dayGoalTasks.length - doneDayTasks.length,
     percent:
-      todayGoalTasks.length === 0
+      dayGoalTasks.length === 0
         ? 0
-        : Math.round((doneTodayTasks.length / todayGoalTasks.length) * 100),
+        : Math.round((doneDayTasks.length / dayGoalTasks.length) * 100),
   };
 }
 
@@ -489,6 +561,8 @@ function renderHistory() {
     const historyItem = document.createElement("li");
     historyItem.className = `calendar-day${item ? ` is-closed ${getSuccessClass(item.percent)}` : ""}${
       dateKey === getTodayKey() ? " is-today" : ""
+    }${dateKey === activeDayKey ? " is-active" : ""}${
+      compareDateKeys(dateKey, getTodayKey()) <= 0 ? " is-selectable" : ""
     }`;
     historyItem.setAttribute(
       "aria-label",
@@ -501,6 +575,9 @@ function renderHistory() {
     title.className = "calendar-date";
     title.textContent = String(day);
     historyItem.append(title);
+    if (compareDateKeys(dateKey, getTodayKey()) <= 0) {
+      historyItem.addEventListener("click", () => setActiveDayKey(dateKey));
+    }
 
     if (item) {
       const progress = document.createElement("span");
@@ -513,7 +590,7 @@ function renderHistory() {
 
       const percent = document.createElement("span");
       percent.className = "calendar-percent";
-      percent.textContent = `${item.percent}%`;
+      percent.textContent = item.rating ? `${item.percent}% · ${item.rating}/5` : `${item.percent}%`;
 
       progress.append(result);
       historyItem.append(progress, percent);
@@ -524,13 +601,16 @@ function renderHistory() {
       historyItem.append(empty);
     }
 
-    if (item && item.dateKey === getTodayKey()) {
+    if (item) {
       const undo = document.createElement("button");
       undo.className = "history-undo";
       undo.type = "button";
-      undo.setAttribute("aria-label", "Отменить закрытие сегодняшнего дня");
+      undo.setAttribute("aria-label", "Отменить закрытие дня");
       undo.textContent = "×";
-      undo.addEventListener("click", () => undoCloseDay(item.id));
+      undo.addEventListener("click", (event) => {
+        event.stopPropagation();
+        undoCloseDay(item.id);
+      });
       historyItem.append(undo);
     }
 
@@ -615,6 +695,39 @@ function parseDateKey(dateKey) {
   return new Date(year, month - 1, day);
 }
 
+function normalizeDateKey(dateKey) {
+  if (typeof dateKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    return null;
+  }
+
+  const date = parseDateKey(dateKey);
+  return Number.isNaN(date.getTime()) ? null : getDateKey(date);
+}
+
+function compareDateKeys(left, right) {
+  return left.localeCompare(right);
+}
+
+function addDays(dateKey, amount) {
+  const date = parseDateKey(dateKey);
+  date.setDate(date.getDate() + amount);
+  return getDateKey(date);
+}
+
+function formatDayLabel(dateKey) {
+  const date = parseDateKey(dateKey);
+  const todayKey = getTodayKey();
+
+  if (dateKey === todayKey) {
+    return "Сегодня";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(date);
+}
+
 function getSuccessClass(percent) {
   if (percent < 50) {
     return "is-low";
@@ -640,12 +753,104 @@ function getTodayKey() {
 }
 
 function getTodayHistoryItem() {
-  const todayKey = getTodayKey();
-  return history.find((item) => item.dateKey === todayKey);
+  return getHistoryItem(getTodayKey());
 }
 
 function isTodayClosed() {
-  return Boolean(getTodayHistoryItem());
+  return isDayClosed(getTodayKey());
+}
+
+function getHistoryItem(dateKey) {
+  return history.find((item) => item.dateKey === dateKey);
+}
+
+function isDayClosed(dateKey) {
+  return Boolean(getHistoryItem(dateKey));
+}
+
+function isActiveDayClosed() {
+  return isDayClosed(activeDayKey);
+}
+
+function getEditableTasksForDay(dateKey) {
+  return tasks.filter((task) => task.dateKey === dateKey);
+}
+
+function getRenderableTasksForActiveDay() {
+  const closedItem = getHistoryItem(activeDayKey);
+  return closedItem ? closedItem.archivedTasks : getEditableTasksForDay(activeDayKey);
+}
+
+function getBlockingOpenDayKey() {
+  const todayKey = getTodayKey();
+  const openPastDayKeys = tasks
+    .map((task) => task.dateKey)
+    .filter((dateKey) => compareDateKeys(dateKey, todayKey) < 0 && !isDayClosed(dateKey))
+    .sort(compareDateKeys);
+
+  return openPastDayKeys[0] || null;
+}
+
+function chooseActiveDayKey(preferredDayKey) {
+  const blockingDayKey = getBlockingOpenDayKey();
+  const todayKey = getTodayKey();
+
+  if (blockingDayKey) {
+    return blockingDayKey;
+  }
+
+  const normalizedPreferred = normalizeDateKey(preferredDayKey);
+
+  if (
+    normalizedPreferred &&
+    compareDateKeys(normalizedPreferred, todayKey) <= 0 &&
+    (normalizedPreferred === todayKey || !isDayClosed(normalizedPreferred))
+  ) {
+    return normalizedPreferred;
+  }
+
+  return todayKey;
+}
+
+function setActiveDayKey(dateKey) {
+  const normalized = normalizeDateKey(dateKey);
+
+  if (!normalized || compareDateKeys(normalized, getTodayKey()) > 0) {
+    return;
+  }
+
+  activeDayKey = normalized;
+  saveActiveDayKey();
+  switchView(currentView);
+}
+
+function renderDaySwitcher() {
+  const todayKey = getTodayKey();
+  const blockingDayKey = getBlockingOpenDayKey();
+  const closedItem = getHistoryItem(activeDayKey);
+  const isPast = compareDateKeys(activeDayKey, todayKey) < 0;
+  const isClosed = Boolean(closedItem);
+  const nextDayKey = addDays(activeDayKey, 1);
+
+  activeDayTitle.textContent = formatDayLabel(activeDayKey);
+
+  if (isClosed) {
+    activeDayStatus.textContent = closedItem.note
+      ? `Закрыт · оценка ${closedItem.rating || "—"}/5 · ${closedItem.note}`
+      : `Закрыт · оценка ${closedItem.rating || "—"}/5`;
+  } else if (blockingDayKey && activeDayKey === blockingDayKey && isPast) {
+    activeDayStatus.textContent = "Незакрытый прошлый день. Закрой его, чтобы начать новый.";
+  } else if (activeDayKey === todayKey) {
+    activeDayStatus.textContent = "Открытый день";
+  } else {
+    activeDayStatus.textContent = "Прошлый день открыт";
+  }
+
+  dayPrevButton.disabled = false;
+  dayNextButton.disabled =
+    compareDateKeys(nextDayKey, todayKey) > 0 ||
+    Boolean(blockingDayKey && compareDateKeys(nextDayKey, blockingDayKey) > 0);
+  dayTodayButton.disabled = activeDayKey === todayKey || Boolean(blockingDayKey);
 }
 
 function setComposerExpanded(expanded, { focus = false } = {}) {
@@ -687,10 +892,11 @@ function getClosedDayWord(count) {
 }
 
 function getVisibleTasks() {
+  const dayTasks = getRenderableTasksForActiveDay();
   const tasksInView =
     currentView === "done"
-      ? tasks.filter((task) => task.done)
-      : tasks.filter((task) => task.view === currentView);
+      ? dayTasks.filter((task) => task.done)
+      : dayTasks.filter((task) => task.view === currentView);
 
   return currentPriority === "all"
     ? tasksInView
@@ -698,7 +904,7 @@ function getVisibleTasks() {
 }
 
 function addTask(title, priority) {
-  if (currentView === "now" && isTodayClosed()) {
+  if (isActiveDayClosed() || (getBlockingOpenDayKey() && getBlockingOpenDayKey() !== activeDayKey)) {
     return;
   }
 
@@ -713,6 +919,7 @@ function addTask(title, priority) {
     done: false,
     completedFrom: null,
     priority: priorities[priority] ? priority : "medium",
+    dateKey: activeDayKey,
   });
   saveTasks();
   render();
@@ -739,41 +946,63 @@ function deleteTask(id) {
 }
 
 function closeDay() {
-  const stats = getTodayStats();
+  const stats = getActiveDayStats();
 
-  if (stats.total === 0 || isTodayClosed()) {
+  if (stats.total === 0 || isActiveDayClosed()) {
     return;
   }
 
-  const todayGoalTasks = getTodayGoalTasks().map((task) => ({ ...task, view: "now" }));
+  const dayGoalTasks = getActiveDayGoalTasks().map((task) => ({
+    ...task,
+    view: "now",
+    dateKey: activeDayKey,
+  }));
+  const rating = Number(dayRating.value) || null;
+  const note = dayNote.value.trim();
+  const nextDayKey = compareDateKeys(activeDayKey, getTodayKey()) < 0
+    ? getTodayKey()
+    : addDays(activeDayKey, 1);
   const confirmed = window.confirm(
-    `Закрыть день? Итог: ${stats.completed} из ${stats.total}, ${stats.percent}%. Невыполненные задачи уйдут в “Позже”.`
+    `Закрыть ${formatDayLabel(activeDayKey).toLowerCase()}? Итог: ${stats.completed} из ${stats.total}, ${stats.percent}%. Невыполненные задачи перейдут дальше.`
   );
 
   if (!confirmed) {
     return;
   }
 
+  history = history.filter((item) => item.dateKey !== activeDayKey);
   history.unshift({
     id: crypto.randomUUID(),
-    date: new Date().toISOString(),
-    dateKey: getTodayKey(),
-    archivedTasks: todayGoalTasks,
+    date: parseDateKey(activeDayKey).toISOString(),
+    dateKey: activeDayKey,
+    rating,
+    note,
+    archivedTasks: dayGoalTasks,
     ...stats,
   });
   history = history.slice(0, 30);
 
   tasks = tasks
-    .filter((task) => !(task.view === "now" && task.done))
+    .filter((task) => !(task.dateKey === activeDayKey && task.done))
     .map((task) => {
-      if (task.view !== "now") {
+      if (task.dateKey !== activeDayKey) {
         return task;
       }
 
-      return { ...task, view: "later", completedFrom: null };
+      return {
+        ...task,
+        dateKey: nextDayKey,
+        view: task.view === "now" ? "later" : task.view,
+        completedFrom: null,
+      };
     });
 
+  if (compareDateKeys(activeDayKey, getTodayKey()) < 0) {
+    activeDayKey = getTodayKey();
+  }
+  dayNote.value = "";
   currentView = "now";
+  saveActiveDayKey();
   saveTasks();
   saveHistory();
   switchView("now");
@@ -782,7 +1011,7 @@ function closeDay() {
 function undoCloseDay(historyId) {
   const item = history.find((entry) => entry.id === historyId);
 
-  if (!item || item.dateKey !== getTodayKey()) {
+  if (!item) {
     return;
   }
 
@@ -795,6 +1024,7 @@ function undoCloseDay(historyId) {
   const archivedIds = new Set(item.archivedTasks.map((task) => task.id));
   const restoredTasks = item.archivedTasks.map((task) => ({
     ...task,
+    dateKey: item.dateKey,
     view: "now",
     completedFrom: task.done ? "now" : null,
   }));
@@ -802,7 +1032,9 @@ function undoCloseDay(historyId) {
   tasks = [...restoredTasks, ...tasks.filter((task) => !archivedIds.has(task.id))];
   history = history.filter((entry) => entry.id !== historyId);
 
+  activeDayKey = item.dateKey;
   currentView = "now";
+  saveActiveDayKey();
   saveTasks();
   saveHistory();
   switchView("now");
@@ -814,8 +1046,9 @@ function switchView(view) {
     tab.classList.toggle("is-active", tab.dataset.view === view);
     tab.setAttribute("aria-current", tab.dataset.view === view ? "page" : "false");
   });
-  const todayClosed = isTodayClosed();
-  const inputLocked = view === "done" || (view === "now" && todayClosed);
+  const blockingDayKey = getBlockingOpenDayKey();
+  const dayLocked = isActiveDayClosed() || Boolean(blockingDayKey && blockingDayKey !== activeDayKey);
+  const inputLocked = view === "done" || dayLocked;
 
   input.disabled = inputLocked;
   prioritySelect.disabled = inputLocked;
@@ -830,8 +1063,8 @@ function switchView(view) {
   input.placeholder =
     view === "done"
       ? "Выполненные задачи живут отдельно"
-      : view === "now" && todayClosed
-      ? "Сегодня закрыт. Отмени закрытие в истории"
+      : dayLocked
+      ? "День закрыт или ждёт закрытия другой день"
       : `Добавить в “${views[view]}”`;
   render();
 }
@@ -844,6 +1077,15 @@ function switchPriorityFilter(priority) {
     button.setAttribute("aria-pressed", String(active));
   });
   render();
+}
+
+function setPriorityFilter(priority) {
+  currentPriority = priority === "all" || priorities[priority] ? priority : "all";
+  priorityFilterButtons.forEach((button) => {
+    const active = button.dataset.priority === currentPriority;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
 }
 
 function wireDragEvents(item, task) {
@@ -885,7 +1127,12 @@ function startPointerDrag(event, item, task) {
 function moveTask(taskId, nextView, beforeId = null) {
   const movingTask = tasks.find((task) => task.id === taskId);
 
-  if (!movingTask || nextView === "done" || (nextView === "now" && isTodayClosed())) {
+  if (
+    !movingTask ||
+    nextView === "done" ||
+    movingTask.dateKey !== activeDayKey ||
+    isActiveDayClosed()
+  ) {
     return;
   }
 
@@ -966,7 +1213,7 @@ function getDropPositionFromPoint(x, y) {
 function getTabFromPoint(x, y) {
   const target = document.elementFromPoint(x, y);
   const tab = target?.closest(".tab");
-  return tab && tab.dataset.view !== "done" && !(tab.dataset.view === "now" && isTodayClosed())
+  return tab && tab.dataset.view !== "done" && !isActiveDayClosed()
     ? tab
     : null;
 }
@@ -1018,7 +1265,7 @@ tabs.forEach((tab) => {
     if (
       !draggedTaskId ||
       tab.dataset.view === "done" ||
-      (tab.dataset.view === "now" && isTodayClosed())
+      isActiveDayClosed()
     ) {
       return;
     }
@@ -1032,7 +1279,7 @@ tabs.forEach((tab) => {
     if (
       !draggedTaskId ||
       tab.dataset.view === "done" ||
-      (tab.dataset.view === "now" && isTodayClosed())
+      isActiveDayClosed()
     ) {
       return;
     }
@@ -1145,6 +1392,18 @@ priorityFilterButtons.forEach((button) => {
   button.addEventListener("click", () => switchPriorityFilter(button.dataset.priority));
 });
 
+dayPrevButton.addEventListener("click", () => {
+  setActiveDayKey(addDays(activeDayKey, -1));
+});
+
+dayTodayButton.addEventListener("click", () => {
+  setActiveDayKey(getTodayKey());
+});
+
+dayNextButton.addEventListener("click", () => {
+  setActiveDayKey(addDays(activeDayKey, 1));
+});
+
 closeDayButton.addEventListener("click", closeDay);
 
 authLogout.addEventListener("click", () => {
@@ -1152,5 +1411,5 @@ authLogout.addEventListener("click", () => {
 });
 
 setComposerExpanded(false);
-switchPriorityFilter("all");
+setPriorityFilter("all");
 initializeAuth();
