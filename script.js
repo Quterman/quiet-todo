@@ -17,6 +17,8 @@ const initialTasks = [
     done: false,
     completedFrom: null,
     priority: "medium",
+    dueAt: null,
+    note: "",
     dateKey: getTodayKey(),
   },
 ];
@@ -75,6 +77,8 @@ let pointerDrag = null;
 let composerExpanded = true;
 let currentSection = "tasks";
 let selectedDayRating = 4;
+let editingDueTaskId = null;
+let editingNoteTaskId = null;
 let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudData = false;
@@ -126,6 +130,8 @@ function normalizeTask(task) {
     done: Boolean(task.done),
     completedFrom: task.completedFrom || (task.done ? task.view : null),
     priority: priorities[task.priority] ? task.priority : "medium",
+    dueAt: normalizeDueAt(task.dueAt),
+    note: normalizeTaskNote(task.note),
     dateKey: normalizeDateKey(task.dateKey) || getTodayKey(),
   };
 }
@@ -187,6 +193,7 @@ async function saveCloudData() {
   setAuthStatus("Сохраняю в облако...");
 
   const userId = currentUser.id;
+  const skippedTaskColumns = new Set();
   const taskRows = tasks.map((task, index) => ({
     id: task.id,
     user_id: userId,
@@ -195,6 +202,8 @@ async function saveCloudData() {
     done: task.done,
     completed_from: task.completedFrom,
     priority: task.priority,
+    due_at: task.dueAt,
+    note: task.note,
     date_key: task.dateKey,
     sort_order: index,
   }));
@@ -239,7 +248,26 @@ async function saveCloudData() {
   }
 
   if (taskRows.length > 0) {
-    const tasksUpsert = await supabaseClient.from("tasks").upsert(taskRows, { onConflict: "id" });
+    let tasksUpsert = await supabaseClient.from("tasks").upsert(taskRows, { onConflict: "id" });
+
+    while (tasksUpsert.error) {
+      const missingColumn = getMissingOptionalTaskColumn(tasksUpsert.error);
+
+      if (!missingColumn || skippedTaskColumns.has(missingColumn)) {
+        break;
+      }
+
+      skippedTaskColumns.add(missingColumn);
+      const fallbackTaskRows = taskRows.map((row) => {
+        const nextRow = { ...row };
+        for (const column of skippedTaskColumns) {
+          delete nextRow[column];
+        }
+        return nextRow;
+      });
+      tasksUpsert = await supabaseClient.from("tasks").upsert(fallbackTaskRows, { onConflict: "id" });
+    }
+
     if (tasksUpsert.error) {
       setAuthStatus(`Ошибка сохранения задач: ${tasksUpsert.error.message}`);
       return;
@@ -262,7 +290,29 @@ async function saveCloudData() {
     }
   }
 
-  setAuthStatus("Синхронизировано");
+  setAuthStatus(
+    skippedTaskColumns.size > 0
+      ? `Задачи сохранены. Для новых полей добавь в Supabase: ${Array.from(skippedTaskColumns).join(", ")}.`
+      : "Синхронизировано",
+  );
+}
+
+function getMissingOptionalTaskColumn(error) {
+  const message = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
+
+  if (!(message.includes("column") || message.includes("schema cache"))) {
+    return null;
+  }
+
+  if (message.includes("due_at")) {
+    return "due_at";
+  }
+
+  if (message.includes("note")) {
+    return "note";
+  }
+
+  return null;
 }
 
 async function loadCloudData() {
@@ -302,6 +352,8 @@ async function loadCloudData() {
       done: row.done,
       completedFrom: row.completed_from,
       priority: row.priority,
+      dueAt: row.due_at,
+      note: row.note,
       dateKey: row.date_key,
     }),
   );
@@ -401,9 +453,15 @@ function render() {
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
 
-  for (const task of visibleTasks) {
+  const focusTaskCount = visibleTasks.filter((task) => task.priority === "high").length;
+  const shouldShowFocusDivider = focusTaskCount > 0 && focusTaskCount < visibleTasks.length;
+
+  for (const [index, task] of visibleTasks.entries()) {
     const item = document.createElement("li");
-    item.className = `task${task.done ? " is-done" : ""}`;
+    const startsRegularGroup = shouldShowFocusDivider && index === focusTaskCount;
+    item.className = `task${task.done ? " is-done" : ""}${task.priority === "high" ? " is-focus" : ""}${
+      startsRegularGroup ? " starts-regular-group" : ""
+    }${editingNoteTaskId === task.id ? " is-note-open" : ""}`;
     item.dataset.id = task.id;
     item.draggable = !dayClosed && !task.done;
 
@@ -423,18 +481,60 @@ function render() {
     priority.className = `task-priority is-${task.priority}`;
     priority.type = "button";
     priority.disabled = dayClosed;
-    priority.textContent = task.priority === "high" ? "★" : "☆";
+    priority.textContent = "";
     priority.title =
-      task.priority === "high" ? "Снять важность" : "Сделать задачу важной";
+      task.priority === "high" ? "Снять фокус" : "Поставить фокус";
     priority.setAttribute(
       "aria-label",
-      task.priority === "high" ? "Снять важность" : "Сделать задачу важной",
+      task.priority === "high" ? "Снять фокус с задачи" : "Поставить фокус на задачу",
     );
     priority.addEventListener("click", () => togglePriority(task.id));
+
+    const due = document.createElement("div");
+    due.className = `task-due${task.dueAt ? " has-due" : ""}`;
+    due.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    const dueButton = document.createElement("button");
+    dueButton.className = "task-due-button";
+    dueButton.type = "button";
+    dueButton.disabled = dayClosed;
+    dueButton.textContent = task.dueAt ? formatDueAt(task.dueAt) : "Установить срок";
+    dueButton.title = task.dueAt ? "Изменить срок" : "Установить срок";
+    dueButton.setAttribute("aria-label", task.dueAt ? "Изменить срок задачи" : "Установить срок задачи");
+    dueButton.addEventListener("click", () => {
+      editingDueTaskId = editingDueTaskId === task.id ? null : task.id;
+      render();
+    });
+    due.append(dueButton);
+
+    if (!dayClosed && editingDueTaskId === task.id) {
+      const dueEditor = createDueEditor(task);
+      due.append(dueEditor);
+    }
 
     const taskCopy = document.createElement("div");
     taskCopy.className = "task-copy";
     taskCopy.append(title);
+
+    if (task.note) {
+      const notePreview = document.createElement("button");
+      notePreview.className = "task-note-preview";
+      notePreview.type = "button";
+      notePreview.disabled = dayClosed;
+      notePreview.textContent = task.note;
+      notePreview.setAttribute("aria-label", "Изменить заметку к задаче");
+      notePreview.addEventListener("click", () => {
+        editingNoteTaskId = task.id;
+        render();
+      });
+      taskCopy.append(notePreview);
+    }
+
+    if (!dayClosed && editingNoteTaskId === task.id) {
+      taskCopy.append(createTaskNoteEditor(task));
+    }
 
     const remove = document.createElement("button");
     remove.className = "task-delete";
@@ -444,7 +544,21 @@ function render() {
     remove.textContent = "×";
     remove.addEventListener("click", () => deleteTask(task.id));
 
-    item.append(check, taskCopy, priority, remove);
+    item.append(priority, check, taskCopy, due, remove);
+
+    if (!task.note && !dayClosed && editingNoteTaskId !== task.id) {
+      const noteBubble = document.createElement("button");
+      noteBubble.className = "task-note-bubble";
+      noteBubble.type = "button";
+      noteBubble.textContent = "Добавить заметку";
+      noteBubble.setAttribute("aria-label", "Добавить заметку к задаче");
+      noteBubble.addEventListener("click", () => {
+        editingNoteTaskId = task.id;
+        render();
+      });
+      item.append(noteBubble);
+    }
+
     wireDragEvents(item, task);
     list.append(item);
   }
@@ -850,13 +964,170 @@ function getClosedDayWord(count) {
   return "закрытых дней";
 }
 
+function normalizeTaskNote(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, 240);
+}
+
+function normalizeDueAt(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function splitDueAt(dueAt) {
+  const normalized = normalizeDueAt(dueAt);
+
+  if (!normalized) {
+    return { date: "", time: "" };
+  }
+
+  const [date, time = ""] = normalized.split("T");
+  return { date, time };
+}
+
+function formatDueAt(dueAt) {
+  const { date, time } = splitDueAt(dueAt);
+
+  if (!date) {
+    return "Установить срок";
+  }
+
+  const [year, month, day] = date.split("-").map(Number);
+  const label = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+  })
+    .format(new Date(year, month - 1, day))
+    .replace(".", "");
+
+  return time ? `до ${label} · ${time}` : `до ${label}`;
+}
+
+function getDueSortValue(dueAt) {
+  const { date, time } = splitDueAt(dueAt);
+
+  if (!date) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours = 0, minutes = 0] = time ? time.split(":").map(Number) : [];
+  return new Date(year, month - 1, day, hours, minutes).getTime();
+}
+
+function createDueEditor(task) {
+  const { date, time } = splitDueAt(task.dueAt);
+  const editor = document.createElement("div");
+  editor.className = "task-due-editor";
+
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.value = date;
+  dateInput.setAttribute("aria-label", "Дата срока");
+
+  const timeInput = document.createElement("input");
+  timeInput.type = "time";
+  timeInput.value = time;
+  timeInput.setAttribute("aria-label", "Время срока, необязательно");
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "task-due-save";
+  saveButton.textContent = "Ок";
+  saveButton.addEventListener("click", () => {
+    if (!dateInput.value) {
+      dateInput.focus();
+      return;
+    }
+
+    setTaskDueAt(task.id, timeInput.value ? `${dateInput.value}T${timeInput.value}` : dateInput.value);
+  });
+
+  const clearButton = document.createElement("button");
+  clearButton.type = "button";
+  clearButton.className = "task-due-clear";
+  clearButton.textContent = "Сброс";
+  clearButton.addEventListener("click", () => {
+    setTaskDueAt(task.id, null);
+  });
+
+  editor.append(dateInput, timeInput, saveButton, clearButton);
+  window.setTimeout(() => dateInput.focus(), 0);
+
+  return editor;
+}
+
+function createTaskNoteEditor(task) {
+  const editor = document.createElement("div");
+  editor.className = "task-note-editor";
+
+  const noteInput = document.createElement("textarea");
+  noteInput.value = task.note || "";
+  noteInput.rows = 2;
+  noteInput.maxLength = 240;
+  noteInput.placeholder = "Детали, шаги или мысль к задаче";
+  noteInput.setAttribute("aria-label", "Заметка к задаче");
+
+  const actions = document.createElement("div");
+  actions.className = "task-note-actions";
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "task-note-save";
+  saveButton.textContent = "Сохранить";
+  saveButton.addEventListener("click", () => {
+    setTaskNote(task.id, noteInput.value);
+  });
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "task-note-cancel";
+  cancelButton.textContent = "Отмена";
+  cancelButton.addEventListener("click", () => {
+    editingNoteTaskId = null;
+    render();
+  });
+
+  const clearButton = document.createElement("button");
+  clearButton.type = "button";
+  clearButton.className = "task-note-clear";
+  clearButton.textContent = "Убрать";
+  clearButton.hidden = !task.note;
+  clearButton.addEventListener("click", () => {
+    setTaskNote(task.id, "");
+  });
+
+  actions.append(saveButton, cancelButton, clearButton);
+  editor.append(noteInput, actions);
+  window.setTimeout(() => noteInput.focus(), 0);
+
+  return editor;
+}
+
 function getVisibleTasks() {
   const dayTasks = getRenderableTasksForActiveDay();
   return dayTasks
     .map((task, index) => ({ task, index }))
     .sort((left, right) => {
       const priorityDelta = getPriorityRank(right.task.priority) - getPriorityRank(left.task.priority);
-      return priorityDelta || left.index - right.index;
+      const dueDelta = getDueSortValue(left.task.dueAt) - getDueSortValue(right.task.dueAt);
+      return priorityDelta || dueDelta || left.index - right.index;
     })
     .map((item) => item.task);
 }
@@ -873,6 +1144,8 @@ function addTask(title) {
     done: false,
     completedFrom: null,
     priority: "medium",
+    dueAt: null,
+    note: "",
     dateKey: activeDayKey,
   });
   saveTasks();
@@ -893,6 +1166,42 @@ function togglePriority(id) {
       ? { ...task, priority: task.priority === "high" ? "medium" : "high" }
       : task,
   );
+  saveTasks();
+  render();
+}
+
+function setTaskDueAt(id, dueAt) {
+  if (isActiveDayClosed()) {
+    return;
+  }
+
+  tasks = tasks.map((task) =>
+    task.id === id
+      ? {
+          ...task,
+          dueAt: normalizeDueAt(dueAt),
+        }
+      : task,
+  );
+  editingDueTaskId = null;
+  saveTasks();
+  render();
+}
+
+function setTaskNote(id, note) {
+  if (isActiveDayClosed()) {
+    return;
+  }
+
+  tasks = tasks.map((task) =>
+    task.id === id
+      ? {
+          ...task,
+          note: normalizeTaskNote(note),
+        }
+      : task,
+  );
+  editingNoteTaskId = null;
   saveTasks();
   render();
 }
@@ -1058,7 +1367,7 @@ function wireDragEvents(item, task) {
 }
 
 function startPointerDrag(event, item, task) {
-  if (task.done || event.target.closest("button")) {
+  if (task.done || event.target.closest("button, input, textarea")) {
     return;
   }
 
@@ -1244,6 +1553,27 @@ document.addEventListener("pointerup", (event) => {
 
   clearDropHints({ includeDragging: true });
   draggedTaskId = null;
+});
+
+document.addEventListener("click", (event) => {
+  let shouldRender = false;
+
+  if (editingDueTaskId && !event.target.closest(".task-due")) {
+    editingDueTaskId = null;
+    shouldRender = true;
+  }
+
+  if (
+    editingNoteTaskId &&
+    !event.target.closest(".task-note-editor, .task-note-preview, .task-note-bubble")
+  ) {
+    editingNoteTaskId = null;
+    shouldRender = true;
+  }
+
+  if (shouldRender) {
+    render();
+  }
 });
 
 form.addEventListener("submit", (event) => {
