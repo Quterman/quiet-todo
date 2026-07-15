@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=auth-polish-3" />
+    <link rel="stylesheet" href="./styles.css?v=quiet-ui-2" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -67,16 +67,16 @@
 
         <section class="app-section is-active" id="tasks-section" data-section-panel="tasks">
           <section class="day-switcher" aria-label="Рабочий день">
+            <button class="day-arrow" id="day-prev" type="button" aria-label="Предыдущий день">
+              ←
+            </button>
             <div class="day-switcher-copy">
               <span>Рабочий день</span>
-              <strong id="active-day-title">Сегодня</strong>
-              <p id="active-day-status">Проверяю состояние дня</p>
+              <strong id="active-day-title">15 июля</strong>
             </div>
-            <div class="day-nav" aria-label="Переключение дней">
-              <button id="day-prev" type="button" aria-label="Предыдущий день">←</button>
-              <button id="day-today" type="button">Сегодня</button>
-              <button id="day-next" type="button" aria-label="Следующий день">→</button>
-            </div>
+            <button class="day-arrow" id="day-next" type="button" aria-label="Следующий день">
+              →
+            </button>
           </section>
 
           <div class="task-controls">
@@ -116,15 +116,24 @@
 
           <section class="day-tools" aria-label="Итоги дня">
             <div class="day-review" id="day-review" hidden>
-              <label for="day-rating">Оценка дня</label>
-              <select id="day-rating" name="day-rating">
-                <option value="5">5 · сильный день</option>
-                <option value="4" selected>4 · хороший день</option>
-                <option value="3">3 · нормальный день</option>
-                <option value="2">2 · тяжёлый день</option>
-                <option value="1">1 · день на минималках</option>
-              </select>
-              <label for="day-note">Заметка</label>
+              <div class="day-review-head">
+                <h2>Как прошёл день?</h2>
+                <div class="day-rating-options" aria-label="Оценка дня">
+                  <button type="button" data-rating="1" aria-label="Оценка 1 из 5">★</button>
+                  <button type="button" data-rating="2" aria-label="Оценка 2 из 5">★</button>
+                  <button type="button" data-rating="3" aria-label="Оценка 3 из 5">★</button>
+                  <button
+                    class="is-active"
+                    type="button"
+                    data-rating="4"
+                    aria-label="Оценка 4 из 5"
+                  >
+                    ★
+                  </button>
+                  <button type="button" data-rating="5" aria-label="Оценка 5 из 5">★</button>
+                </div>
+              </div>
+              <label class="visually-hidden" for="day-note">Что запомнить?</label>
               <textarea
                 id="day-note"
                 name="day-note"
@@ -159,7 +168,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="./supabase-client.js?v=auth-polish-3"></script>
-    <script src="./script.js?v=auth-polish-3"></script>
+    <script src="./supabase-client.js?v=quiet-ui-2"></script>
+    <script src="./script.js?v=quiet-ui-2"></script>
   </body>
 </html>

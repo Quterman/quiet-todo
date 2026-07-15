@@ -49,12 +49,10 @@ const progressDetail = document.querySelector("#progress-detail");
 const progressTrack = document.querySelector(".progress-track");
 const closeDayButton = document.querySelector("#close-day");
 const activeDayTitle = document.querySelector("#active-day-title");
-const activeDayStatus = document.querySelector("#active-day-status");
 const dayPrevButton = document.querySelector("#day-prev");
-const dayTodayButton = document.querySelector("#day-today");
 const dayNextButton = document.querySelector("#day-next");
 const dayReview = document.querySelector("#day-review");
-const dayRating = document.querySelector("#day-rating");
+const dayRatingButtons = Array.from(document.querySelectorAll("[data-rating]"));
 const dayNote = document.querySelector("#day-note");
 const dayReviewSubmit = document.querySelector("#day-review-submit");
 const dayReviewCancel = document.querySelector("#day-review-cancel");
@@ -76,6 +74,7 @@ let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = true;
 let currentSection = "tasks";
+let selectedDayRating = 4;
 let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudData = false;
@@ -435,7 +434,7 @@ function render() {
 
     const taskCopy = document.createElement("div");
     taskCopy.className = "task-copy";
-    taskCopy.append(title, priority);
+    taskCopy.append(title);
 
     const remove = document.createElement("button");
     remove.className = "task-delete";
@@ -445,7 +444,7 @@ function render() {
     remove.textContent = "×";
     remove.addEventListener("click", () => deleteTask(task.id));
 
-    item.append(check, taskCopy, remove);
+    item.append(check, taskCopy, priority, remove);
     wireDragEvents(item, task);
     list.append(item);
   }
@@ -482,11 +481,13 @@ function updateProgress() {
     dayClosed
       ? "День закрыт. Можно посмотреть задачи и итог"
       : dayGoalTasks.length === 0
-      ? "Добавь задачу в “Сегодня”, и шкала оживёт"
+      ? "Добавь задачу, и шкала оживёт"
       : `${doneDayTasks.length} из ${dayGoalTasks.length} за день завершено`;
   closeDayButton.disabled = dayGoalTasks.length === 0 || dayClosed;
   closeDayButton.textContent = dayClosed ? "День закрыт" : "Закрыть день";
-  dayRating.disabled = dayClosed || dayGoalTasks.length === 0;
+  for (const button of dayRatingButtons) {
+    button.disabled = dayClosed || dayGoalTasks.length === 0;
+  }
   dayNote.disabled = dayClosed || dayGoalTasks.length === 0;
 
   if (dayClosed || dayGoalTasks.length === 0) {
@@ -495,15 +496,14 @@ function updateProgress() {
 }
 
 function updateComposerLock() {
-  const blockingDayKey = getBlockingOpenDayKey();
-  const inputLocked = isActiveDayClosed() || Boolean(blockingDayKey && blockingDayKey !== activeDayKey);
+  const inputLocked = isActiveDayClosed();
 
   input.disabled = inputLocked;
   composerSubmit.disabled = inputLocked;
   composerClose.disabled = inputLocked;
   form.classList.toggle("is-locked", inputLocked);
 
-  input.placeholder = inputLocked ? "День закрыт или ждёт закрытия другой день" : "Что нужно сделать?";
+  input.placeholder = inputLocked ? "Этот день уже закрыт" : "Что нужно сделать?";
 }
 
 function getActiveDayGoalTasks() {
@@ -735,11 +735,6 @@ function addDays(dateKey, amount) {
 
 function formatDayLabel(dateKey) {
   const date = parseDateKey(dateKey);
-  const todayKey = getTodayKey();
-
-  if (dateKey === todayKey) {
-    return "Сегодня";
-  }
 
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
@@ -771,14 +766,6 @@ function getTodayKey() {
   return getDateKey(new Date());
 }
 
-function getTodayHistoryItem() {
-  return getHistoryItem(getTodayKey());
-}
-
-function isTodayClosed() {
-  return isDayClosed(getTodayKey());
-}
-
 function getHistoryItem(dateKey) {
   return history.find((item) => item.dateKey === dateKey);
 }
@@ -800,41 +787,20 @@ function getRenderableTasksForActiveDay() {
   return closedItem ? closedItem.archivedTasks : getEditableTasksForDay(activeDayKey);
 }
 
-function getBlockingOpenDayKey() {
-  const todayKey = getTodayKey();
-  const openPastDayKeys = tasks
-    .map((task) => task.dateKey)
-    .filter((dateKey) => compareDateKeys(dateKey, todayKey) < 0 && !isDayClosed(dateKey))
-    .sort(compareDateKeys);
-
-  return openPastDayKeys[0] || null;
-}
-
 function chooseActiveDayKey(preferredDayKey) {
-  const blockingDayKey = getBlockingOpenDayKey();
-  const todayKey = getTodayKey();
-
-  if (blockingDayKey) {
-    return blockingDayKey;
-  }
-
   const normalizedPreferred = normalizeDateKey(preferredDayKey);
 
-  if (
-    normalizedPreferred &&
-    compareDateKeys(normalizedPreferred, todayKey) <= 0 &&
-    (normalizedPreferred === todayKey || !isDayClosed(normalizedPreferred))
-  ) {
+  if (normalizedPreferred) {
     return normalizedPreferred;
   }
 
-  return todayKey;
+  return getTodayKey();
 }
 
 function setActiveDayKey(dateKey) {
   const normalized = normalizeDateKey(dateKey);
 
-  if (!normalized || compareDateKeys(normalized, getTodayKey()) > 0) {
+  if (!normalized) {
     return;
   }
 
@@ -845,32 +811,9 @@ function setActiveDayKey(dateKey) {
 }
 
 function renderDaySwitcher() {
-  const todayKey = getTodayKey();
-  const blockingDayKey = getBlockingOpenDayKey();
-  const closedItem = getHistoryItem(activeDayKey);
-  const isPast = compareDateKeys(activeDayKey, todayKey) < 0;
-  const isClosed = Boolean(closedItem);
-  const nextDayKey = addDays(activeDayKey, 1);
-
   activeDayTitle.textContent = formatDayLabel(activeDayKey);
-
-  if (isClosed) {
-    activeDayStatus.textContent = closedItem.note
-      ? `Закрыт · оценка ${closedItem.rating || "—"}/5 · ${closedItem.note}`
-      : `Закрыт · оценка ${closedItem.rating || "—"}/5`;
-  } else if (blockingDayKey && activeDayKey === blockingDayKey && isPast) {
-    activeDayStatus.textContent = "Незакрытый прошлый день. Закрой его, чтобы начать новый.";
-  } else if (activeDayKey === todayKey) {
-    activeDayStatus.textContent = "Открытый день";
-  } else {
-    activeDayStatus.textContent = "Прошлый день открыт";
-  }
-
   dayPrevButton.disabled = false;
-  dayNextButton.disabled =
-    compareDateKeys(nextDayKey, todayKey) > 0 ||
-    Boolean(blockingDayKey && compareDateKeys(nextDayKey, blockingDayKey) > 0);
-  dayTodayButton.disabled = activeDayKey === todayKey || Boolean(blockingDayKey);
+  dayNextButton.disabled = false;
 }
 
 function setComposerExpanded(expanded, { focus = false } = {}) {
@@ -919,7 +862,7 @@ function getVisibleTasks() {
 }
 
 function addTask(title) {
-  if (isActiveDayClosed() || (getBlockingOpenDayKey() && getBlockingOpenDayKey() !== activeDayKey)) {
+  if (isActiveDayClosed()) {
     return;
   }
 
@@ -991,11 +934,9 @@ function closeDay() {
     view: "now",
     dateKey: activeDayKey,
   }));
-  const rating = Number(dayRating.value) || null;
+  const rating = selectedDayRating || null;
   const note = dayNote.value.trim();
-  const nextDayKey = compareDateKeys(activeDayKey, getTodayKey()) < 0
-    ? getTodayKey()
-    : addDays(activeDayKey, 1);
+  const nextDayKey = addDays(activeDayKey, 1);
 
   history = history.filter((item) => item.dateKey !== activeDayKey);
   history.unshift({
@@ -1038,7 +979,10 @@ function closeDay() {
 function showDayReview() {
   dayReview.hidden = false;
   closeDayButton.hidden = true;
-  dayRating.disabled = false;
+  for (const button of dayRatingButtons) {
+    button.disabled = false;
+  }
+  setDayRating(selectedDayRating);
   dayNote.disabled = false;
   dayNote.focus();
 }
@@ -1048,6 +992,19 @@ function hideDayReview() {
   closeDayButton.hidden = false;
 }
 
+function setDayRating(rating) {
+  selectedDayRating = Number(rating) || 4;
+
+  for (const button of dayRatingButtons) {
+    const buttonRating = Number(button.dataset.rating);
+    const isActive = buttonRating === selectedDayRating;
+    const isFilled = buttonRating <= selectedDayRating;
+    button.classList.toggle("is-active", isActive);
+    button.classList.toggle("is-filled", isFilled);
+    button.setAttribute("aria-pressed", String(isActive));
+  }
+}
+
 function undoCloseDay(historyId) {
   const item = history.find((entry) => entry.id === historyId);
 
@@ -1055,7 +1012,7 @@ function undoCloseDay(historyId) {
     return;
   }
 
-  const confirmed = window.confirm("Отменить закрытие дня и вернуть задачи в “Сегодня”?");
+  const confirmed = window.confirm("Отменить закрытие дня и вернуть задачи в выбранную дату?");
 
   if (!confirmed) {
     return;
@@ -1319,10 +1276,6 @@ dayPrevButton.addEventListener("click", () => {
   setActiveDayKey(addDays(activeDayKey, -1));
 });
 
-dayTodayButton.addEventListener("click", () => {
-  setActiveDayKey(getTodayKey());
-});
-
 dayNextButton.addEventListener("click", () => {
   setActiveDayKey(addDays(activeDayKey, 1));
 });
@@ -1335,10 +1288,17 @@ dayReviewCancel.addEventListener("click", () => {
   hideDayReview();
 });
 
+for (const button of dayRatingButtons) {
+  button.addEventListener("click", () => {
+    setDayRating(button.dataset.rating);
+  });
+}
+
 authLogout.addEventListener("click", () => {
   signOut();
 });
 
 setComposerExpanded(true);
+setDayRating(selectedDayRating);
 switchSection(currentSection);
 initializeAuth();
