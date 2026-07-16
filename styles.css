@@ -42,16 +42,17 @@ button {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 28px;
+  padding: 24px;
 }
 
 .workspace {
-  width: min(100%, 760px);
-  min-height: min(740px, calc(100vh - 56px));
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 28px;
+  width: min(100%, 1120px);
+  min-height: min(780px, calc(100vh - 48px));
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 8px;
@@ -59,12 +60,61 @@ button {
   backdrop-filter: blur(18px);
 }
 
+.app-sidebar {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 24px 18px;
+  border-radius: 0;
+  border: 0;
+  background:
+    linear-gradient(180deg, rgba(239, 247, 242, 0.78), rgba(247, 241, 233, 0.46)),
+    rgba(239, 247, 242, 0.72);
+}
+
+.workspace-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 24px 24px 28px;
+}
+
 .topbar {
   display: grid;
-  grid-template-columns: 84px minmax(250px, 1fr) minmax(150px, 190px);
-  align-items: stretch;
-  gap: 12px;
-  padding: 4px 0 2px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: center;
+  gap: 24px;
+  padding: 2px 0;
+}
+
+.topbar-copy {
+  min-width: 0;
+  display: grid;
+}
+
+.topbar-copy strong {
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.workspace-body {
+  min-width: 0;
+  display: block;
+}
+
+.workspace:not([data-current-section="tasks"]) .topbar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace:not([data-current-section="tasks"]) .progress-card {
+  display: none;
+}
+
+.content-column {
+  min-width: 0;
 }
 
 .brand-mark {
@@ -80,19 +130,18 @@ h1 {
 
 .brand-mark h1 {
   display: grid;
-  place-items: center;
-  width: 72px;
-  min-height: 100%;
-  padding: 8px;
+  justify-items: start;
+  width: auto;
+  min-height: 0;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
   background: transparent;
   color: var(--ink);
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.15;
   letter-spacing: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .progress-card {
@@ -101,10 +150,10 @@ h1 {
 
 .progress-meter {
   min-width: 0;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid rgba(217, 222, 217, 0.82);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .progress-copy {
@@ -156,7 +205,7 @@ h1 {
   align-content: center;
   gap: 7px;
   min-width: 0;
-  padding: 8px;
+  padding: 8px 10px;
   border: 0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.34);
@@ -227,28 +276,60 @@ h1 {
 
 .section-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid rgba(217, 222, 217, 0.82);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.42);
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .section-tab {
-  min-height: 38px;
+  min-height: 34px;
+  padding: 0 10px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: left;
 }
 
 .section-tab.is-active {
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.66);
   color: var(--ink);
-  box-shadow: 0 1px 0 rgba(48, 58, 54, 0.05);
+  box-shadow: inset 3px 0 0 var(--mint-strong);
+}
+
+.account {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+}
+
+.account-head {
+  display: grid;
+  gap: 6px;
+}
+
+.account-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.account-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.account .auth-panel {
+  width: min(100%, 360px);
+  padding: 12px;
+  border: 1px solid rgba(217, 222, 217, 0.82);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .app-section {
@@ -256,7 +337,6 @@ h1 {
 }
 
 .app-section.is-active {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -508,7 +588,7 @@ h1 {
 
 .task-controls {
   display: block;
-  margin-top: 4px;
+  margin: 10px 0 16px;
 }
 
 .composer {
@@ -517,28 +597,38 @@ h1 {
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  min-height: 52px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(217, 222, 217, 0.82);
+  min-height: 42px;
+  padding: 0;
+  border-bottom: 0;
   transition:
     border-color 160ms ease,
     background 160ms ease;
 }
 
 .composer:focus-within {
-  border-color: var(--mint-strong);
+  border-color: transparent;
 }
 
 .composer-open {
-  width: 100%;
-  min-height: 36px;
+  justify-self: start;
+  min-height: 32px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--mint-strong);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 600;
   text-align: left;
+}
+
+.composer-open::before {
+  content: "+";
+  margin-right: 6px;
+}
+
+.composer-open:disabled::before {
+  content: "";
+  margin-right: 0;
 }
 
 .composer-open:hover {
@@ -552,6 +642,9 @@ h1 {
 
 .composer.is-expanded {
   grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 46px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(217, 222, 217, 0.82);
 }
 
 .composer.is-expanded .composer-open,
@@ -563,13 +656,13 @@ h1 {
 .composer input,
 .composer select {
   min-width: 0;
-  height: 36px;
+  height: 38px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 500;
   outline: none;
   transition:
@@ -609,9 +702,23 @@ h1 {
   font-weight: 600;
 }
 
+.composer-submit[hidden] {
+  display: none;
+}
+
+.composer-submit:disabled {
+  cursor: default;
+  color: rgba(105, 113, 111, 0.42);
+}
+
 .composer-submit:hover {
   background: rgba(217, 239, 227, 0.46);
   color: #4f9d73;
+}
+
+.composer-submit:disabled:hover {
+  background: transparent;
+  color: rgba(105, 113, 111, 0.42);
 }
 
 .composer-close {
@@ -630,7 +737,7 @@ h1 {
 .day-tools {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 18px;
 }
 
 .day-review {
@@ -1647,6 +1754,31 @@ h1 {
   white-space: nowrap;
 }
 
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .section-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .section-tab {
+    text-align: center;
+  }
+
+  .section-tab.is-active {
+    box-shadow: inset 0 -3px 0 var(--mint-strong);
+  }
+
+}
+
 @media (max-width: 620px) {
   .auth-page {
     padding: 14px;
@@ -1670,16 +1802,24 @@ h1 {
 
   .workspace {
     min-height: calc(100vh - 28px);
+  }
+
+  .app-sidebar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .workspace-main {
     padding: 18px;
   }
 
   .topbar {
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .brand-mark h1 {
-    width: 64px;
     font-size: 0.74rem;
   }
 

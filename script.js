@@ -68,6 +68,8 @@ const authPanel = document.querySelector(".auth-panel");
 const authLogout = document.querySelector("#auth-logout");
 const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
+const workspace = document.querySelector(".workspace");
+const sectionTitle = document.querySelector("#section-title");
 const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
 const sectionPanels = Array.from(document.querySelectorAll("[data-section-panel]"));
 const recurringForm = document.querySelector("#recurring-form");
@@ -92,6 +94,7 @@ let editingNoteTaskId = null;
 let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudData = false;
+let cloudHistorySyncEnabled = true;
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -274,30 +277,34 @@ async function saveCloudData() {
     created_at: item.date,
   }));
 
-  if (historyRows.length > 0) {
-    const historyUpsert = await supabaseClient
-      .from("day_history")
-      .upsert(historyRows, { onConflict: "user_id,date_key" });
-    if (historyUpsert.error) {
-      setAuthStatus(`Ошибка сохранения истории: ${historyUpsert.error.message}`);
-      return;
-    }
+  if (cloudHistorySyncEnabled) {
+    if (historyRows.length > 0) {
+      const historyUpsert = await supabaseClient
+        .from("day_history")
+        .upsert(historyRows, { onConflict: "user_id,date_key" });
+      if (historyUpsert.error) {
+        setAuthStatus(`Ошибка сохранения истории: ${historyUpsert.error.message}`);
+        return;
+      }
 
-    const historyDelete = await supabaseClient
-      .from("day_history")
-      .delete()
-      .eq("user_id", userId)
-      .not("id", "in", `(${historyRows.map((item) => item.id).join(",")})`);
-    if (historyDelete.error) {
-      setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
-      return;
+      const historyDelete = await supabaseClient
+        .from("day_history")
+        .delete()
+        .eq("user_id", userId)
+        .not("id", "in", `(${historyRows.map((item) => item.id).join(",")})`);
+      if (historyDelete.error) {
+        setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
+        return;
+      }
+    } else {
+      const historyDelete = await supabaseClient.from("day_history").delete().eq("user_id", userId);
+      if (historyDelete.error) {
+        setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
+        return;
+      }
     }
   } else {
-    const historyDelete = await supabaseClient.from("day_history").delete().eq("user_id", userId);
-    if (historyDelete.error) {
-      setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
-      return;
-    }
+    cloudWarnings.push("история временно не перезаписывается, потому что не загрузилась");
   }
 
   if (recurringRows.length > 0) {
@@ -424,12 +431,6 @@ async function loadCloudData() {
     return;
   }
 
-  if (historyResult.error) {
-    setAuthStatus(`Ошибка загрузки истории: ${historyResult.error.message}`);
-    isLoadingCloudData = false;
-    return;
-  }
-
   if (recurringResult.error) {
     recurringTasks = [];
     setAuthStatus(`Задачи загрузились. Регулярные пока недоступны: ${recurringResult.error.message}`);
@@ -460,20 +461,23 @@ async function loadCloudData() {
       }),
     );
   }
-  history = historyResult.data.map((row) =>
-    normalizeHistoryItem({
-      id: row.id,
-      date: row.created_at,
-      dateKey: row.date_key,
-      total: row.total,
-      completed: row.completed,
-      moved: row.moved,
-      percent: row.percent,
-      rating: row.rating,
-      note: row.note,
-      archivedTasks: row.archived_tasks,
-    }),
-  );
+  cloudHistorySyncEnabled = !historyResult.error;
+  history = historyResult.error
+    ? history
+    : historyResult.data.map((row) =>
+        normalizeHistoryItem({
+          id: row.id,
+          date: row.created_at,
+          dateKey: row.date_key,
+          total: row.total,
+          completed: row.completed,
+          moved: row.moved,
+          percent: row.percent,
+          rating: row.rating,
+          note: row.note,
+          archivedTasks: row.archived_tasks,
+        }),
+      );
 
   activeDayKey = chooseActiveDayKey(activeDayKey);
   saveActiveDayKey();
@@ -483,7 +487,9 @@ async function loadCloudData() {
     scheduleCloudSave();
   }
   setAuthStatus(
-    recurringResult.error
+    historyResult.error
+      ? `Задачи загружены. История пока недоступна: ${historyResult.error.message}`
+      : recurringResult.error
       ? `Задачи загружены. Регулярные пока недоступны: ${recurringResult.error.message}`
       : "Данные загружены из Supabase",
   );
@@ -674,7 +680,15 @@ function render() {
 }
 
 function switchSection(section) {
-  currentSection = ["tasks", "stats", "recurring"].includes(section) ? section : "tasks";
+  currentSection = ["tasks", "stats", "recurring", "account"].includes(section) ? section : "tasks";
+  workspace.dataset.currentSection = currentSection;
+  const sectionTitles = {
+    tasks: "Фокус на день",
+    stats: "Прогресс и история",
+    recurring: "Повторяющиеся задачи",
+    account: "Аккаунт",
+  };
+  sectionTitle.textContent = sectionTitles[currentSection];
 
   for (const tab of sectionTabs) {
     const isActive = tab.dataset.section === currentSection;
@@ -728,11 +742,15 @@ function updateComposerLock() {
   form.classList.toggle("is-locked", inputLocked);
 
   input.placeholder = inputLocked ? "Этот день уже закрыт" : "Новая задача";
-  composerOpen.textContent = inputLocked ? "День закрыт" : "+ Новая задача";
+  composerOpen.textContent = inputLocked ? "День закрыт" : "Новая задача";
 
   if (inputLocked) {
     setComposerExpanded(false);
   }
+}
+
+function updateComposerSubmitState() {
+  composerSubmit.disabled = isActiveDayClosed() || input.value.trim().length === 0;
 }
 
 function getActiveDayGoalTasks() {
@@ -1018,12 +1036,42 @@ function getRenderableTasksForActiveDay() {
 
 function chooseActiveDayKey(preferredDayKey) {
   const normalizedPreferred = normalizeDateKey(preferredDayKey);
+  const todayKey = getTodayKey();
 
-  if (normalizedPreferred) {
+  if (
+    normalizedPreferred &&
+    (compareDateKeys(normalizedPreferred, todayKey) >= 0 ||
+      getEditableTasksForDay(normalizedPreferred).length > 0 ||
+      isDayClosed(normalizedPreferred))
+  ) {
     return normalizedPreferred;
   }
 
-  return getTodayKey();
+  if (getEditableTasksForDay(todayKey).length > 0 || isDayClosed(todayKey)) {
+    return todayKey;
+  }
+
+  const nearestOpenTask = tasks
+    .filter((task) => compareDateKeys(task.dateKey, todayKey) >= 0)
+    .sort((left, right) => compareDateKeys(left.dateKey, right.dateKey))[0];
+
+  if (nearestOpenTask) {
+    return nearestOpenTask.dateKey;
+  }
+
+  const latestUnclosedPastTask = tasks
+    .filter((task) => !isDayClosed(task.dateKey) && compareDateKeys(task.dateKey, todayKey) < 0)
+    .sort((left, right) => compareDateKeys(right.dateKey, left.dateKey))[0];
+
+  if (latestUnclosedPastTask) {
+    return latestUnclosedPastTask.dateKey;
+  }
+
+  const nearestClosedDay = history
+    .filter((item) => compareDateKeys(item.dateKey, todayKey) >= 0)
+    .sort((left, right) => compareDateKeys(left.dateKey, right.dateKey))[0];
+
+  return nearestClosedDay?.dateKey || todayKey;
 }
 
 function setActiveDayKey(dateKey) {
@@ -1053,6 +1101,8 @@ function setComposerExpanded(expanded, { focus = false } = {}) {
   taskControls.classList.toggle("is-composer-open", composerExpanded);
   composerClose.hidden = true;
   composerSubmit.setAttribute("aria-label", "Добавить задачу");
+  composerSubmit.hidden = !composerExpanded;
+  updateComposerSubmitState();
   input.tabIndex = composerExpanded ? 0 : -1;
 
   if (composerExpanded && focus) {
@@ -1257,9 +1307,10 @@ function getVisibleTasks() {
   return dayTasks
     .map((task, index) => ({ task, index }))
     .sort((left, right) => {
+      const doneDelta = Number(left.task.done) - Number(right.task.done);
       const priorityDelta = getPriorityRank(right.task.priority) - getPriorityRank(left.task.priority);
       const dueDelta = getDueSortValue(left.task.dueAt) - getDueSortValue(right.task.dueAt);
-      return priorityDelta || dueDelta || left.index - right.index;
+      return doneDelta || priorityDelta || dueDelta || left.index - right.index;
     })
     .map((item) => item.task);
 }
@@ -1464,15 +1515,22 @@ function setTaskNote(id, note) {
 }
 
 function toggleTask(id) {
+  let toggledTask = null;
   tasks = tasks.map((task) => {
     if (task.id !== id) {
       return task;
     }
 
-    return task.done
+    toggledTask = task.done
       ? { ...task, done: false, completedFrom: null }
       : { ...task, done: true, completedFrom: task.view };
+    return toggledTask;
   });
+
+  if (toggledTask?.done) {
+    tasks = [...tasks.filter((task) => task.id !== id), toggledTask];
+  }
+
   saveTasks();
   render();
 }
@@ -1829,6 +1887,10 @@ document.addEventListener("click", (event) => {
     shouldRender = true;
   }
 
+  if (composerExpanded && !input.value.trim() && !event.target.closest("#task-form")) {
+    setComposerExpanded(false);
+  }
+
   if (shouldRender) {
     render();
   }
@@ -1851,7 +1913,13 @@ form.addEventListener("submit", (event) => {
 
   addTask(title);
   input.value = "";
+  composerSubmit.hidden = true;
+  composerSubmit.disabled = true;
   setComposerExpanded(false);
+});
+
+input.addEventListener("input", () => {
+  updateComposerSubmitState();
 });
 
 recurringForm.addEventListener("submit", (event) => {
@@ -1865,6 +1933,8 @@ recurringForm.addEventListener("submit", (event) => {
 
 composerClose.addEventListener("click", () => {
   input.value = "";
+  composerSubmit.hidden = true;
+  composerSubmit.disabled = true;
   setComposerExpanded(false);
 });
 
@@ -1908,7 +1978,7 @@ authLogout.addEventListener("click", () => {
   signOut();
 });
 
-setComposerExpanded(true);
+setComposerExpanded(false);
 setDayRating(selectedDayRating);
 switchSection(currentSection);
 initializeAuth();

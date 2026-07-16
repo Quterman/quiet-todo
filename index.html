@@ -10,201 +10,230 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=task-lines-1" />
+    <link rel="stylesheet" href="./styles.css?v=task-lines-2" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
-      <section class="workspace">
-        <header class="topbar">
+      <section class="workspace" data-current-section="tasks">
+        <aside class="app-sidebar" aria-label="Навигация">
           <div class="brand-mark">
             <h1 id="app-title">Тихий список</h1>
           </div>
-          <aside class="progress-card" aria-label="Прогресс задач">
-            <div class="progress-meter">
-              <div class="progress-copy">
-                <span>Оценка дня</span>
-                <strong id="progress-label">0%</strong>
-              </div>
-              <div
-                class="progress-track"
-                role="progressbar"
-                aria-label="Выполнено задач на сегодня"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                aria-valuenow="0"
-              >
-                <span id="progress-fill"></span>
-              </div>
-              <p id="progress-detail">Сегодняшняя цель пока пустая</p>
-            </div>
-          </aside>
-          <section class="auth-panel" aria-label="Аккаунт">
-            <div class="auth-copy">
-              <strong id="auth-title">Проверяю вход...</strong>
-            </div>
-            <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
-          </section>
-        </header>
-
-        <nav class="section-tabs" aria-label="Разделы приложения">
-          <button
-            class="section-tab is-active"
-            data-section="tasks"
-            type="button"
-            aria-selected="true"
-          >
-            Задачи
-          </button>
-          <button
-            class="section-tab"
-            data-section="stats"
-            type="button"
-            aria-selected="false"
-          >
-            Статистика
-          </button>
-          <button
-            class="section-tab"
-            data-section="recurring"
-            type="button"
-            aria-selected="false"
-          >
-            Регулярные
-          </button>
-        </nav>
-
-        <section class="app-section is-active" id="tasks-section" data-section-panel="tasks">
-          <section class="day-switcher" aria-label="Рабочий день">
-            <button class="day-arrow" id="day-prev" type="button" aria-label="Предыдущий день">
-              ←
+          <nav class="section-tabs" aria-label="Разделы приложения">
+            <button
+              class="section-tab is-active"
+              data-section="tasks"
+              type="button"
+              aria-selected="true"
+            >
+              Задачи
             </button>
-            <div class="day-switcher-copy">
-              <span>Рабочий день</span>
-              <strong id="active-day-title">15 июля</strong>
-            </div>
-            <button class="day-arrow" id="day-next" type="button" aria-label="Следующий день">
-              →
+            <button
+              class="section-tab"
+              data-section="stats"
+              type="button"
+              aria-selected="false"
+            >
+              Статистика
             </button>
-          </section>
+            <button
+              class="section-tab"
+              data-section="recurring"
+              type="button"
+              aria-selected="false"
+            >
+              Регулярные
+            </button>
+            <button
+              class="section-tab"
+              data-section="account"
+              type="button"
+              aria-selected="false"
+            >
+              Аккаунт
+            </button>
+          </nav>
+        </aside>
 
-          <section class="list-shell" aria-label="Задачи">
-            <div class="task-controls">
-              <form class="composer is-collapsed" id="task-form" aria-expanded="false">
-                <label class="visually-hidden" for="task-input">Новая задача</label>
-                <button class="composer-open" id="composer-open" type="button">+ Новая задача</button>
-                <input
-                  id="task-input"
-                  name="task"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Новая задача"
-                  maxlength="90"
-                />
-                <button class="composer-submit" type="submit" aria-label="Добавить задачу">
-                  Добавить
-                </button>
-                <button
-                  class="composer-close"
-                  id="composer-close"
-                  type="button"
-                  aria-label="Скрыть поле добавления"
-                  hidden
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-              </form>
+        <section class="workspace-main">
+          <header class="topbar">
+            <div class="topbar-copy">
+              <strong id="section-title">Фокус на день</strong>
             </div>
-            <ul class="task-list" id="task-list"></ul>
-            <div class="empty" id="empty-state" hidden>
-              <div class="empty-mark" aria-hidden="true"></div>
-              <h2>Тут пока тихо</h2>
-              <p>Добавь одну маленькую задачу в строке выше. Даже “налить воды” считается.</p>
-            </div>
-          </section>
-
-          <section class="day-tools" aria-label="Итоги дня">
-            <div class="day-review" id="day-review" hidden>
-              <div class="day-review-head">
-                <h2>Как прошёл день?</h2>
-                <div class="day-rating-options" aria-label="Оценка дня">
-                  <button type="button" data-rating="1" aria-label="Оценка 1 из 5">★</button>
-                  <button type="button" data-rating="2" aria-label="Оценка 2 из 5">★</button>
-                  <button type="button" data-rating="3" aria-label="Оценка 3 из 5">★</button>
-                  <button
-                    class="is-active"
-                    type="button"
-                    data-rating="4"
-                    aria-label="Оценка 4 из 5"
-                  >
-                    ★
-                  </button>
-                  <button type="button" data-rating="5" aria-label="Оценка 5 из 5">★</button>
+            <section class="progress-card" aria-label="Прогресс задач">
+              <div class="progress-meter">
+                <div class="progress-copy">
+                  <span>Рабочий день</span>
+                  <strong id="progress-label">0%</strong>
                 </div>
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  aria-label="Выполнено задач на сегодня"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span id="progress-fill"></span>
+                </div>
+                <p id="progress-detail">Сегодняшняя цель пока пустая</p>
               </div>
-              <label class="visually-hidden" for="day-note">Что запомнить?</label>
-              <textarea
-                id="day-note"
-                name="day-note"
-                rows="2"
-                maxlength="220"
-                placeholder="Что важно запомнить про этот день?"
-              ></textarea>
-              <div class="day-review-actions">
-                <button class="day-review-submit" id="day-review-submit" type="button">
-                  Сохранить итог
-                </button>
-                <button class="day-review-cancel" id="day-review-cancel" type="button">
-                  Отмена
-                </button>
-              </div>
-            </div>
-            <button class="day-close" id="close-day" type="button">Закрыть день</button>
-          </section>
-        </section>
+            </section>
+          </header>
 
-        <section class="app-section" id="stats-section" data-section-panel="stats" hidden>
-          <section class="history" aria-label="История дней">
-            <div class="history-head">
-              <h2>Статистика</h2>
-              <span id="history-count">0 дней</span>
-            </div>
-            <ol class="history-list" id="history-list"></ol>
-            <div class="week-summary" id="week-summary" aria-live="polite"></div>
-          </section>
-        </section>
+          <div class="workspace-body">
+            <div class="content-column">
+              <section class="app-section is-active" id="tasks-section" data-section-panel="tasks">
+                <section class="day-switcher" aria-label="Рабочий день">
+                  <button class="day-arrow" id="day-prev" type="button" aria-label="Предыдущий день">
+                    ←
+                  </button>
+                  <div class="day-switcher-copy">
+                    <span>Рабочий день</span>
+                    <strong id="active-day-title">15 июля</strong>
+                  </div>
+                  <button class="day-arrow" id="day-next" type="button" aria-label="Следующий день">
+                    →
+                  </button>
+                </section>
 
-        <section class="app-section" id="recurring-section" data-section-panel="recurring" hidden>
-          <section class="recurring" aria-label="Регулярные задачи">
-            <div class="recurring-head">
-              <h2>Регулярные</h2>
-              <span id="recurring-count">0 активных</span>
+                <section class="list-shell" aria-label="Задачи">
+                  <div class="task-controls">
+                    <form class="composer is-collapsed" id="task-form" aria-expanded="false">
+                      <label class="visually-hidden" for="task-input">Новая задача</label>
+                      <button class="composer-open" id="composer-open" type="button">Новая задача</button>
+                      <input
+                        id="task-input"
+                        name="task"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="Новая задача"
+                        maxlength="90"
+                      />
+                      <button class="composer-submit" type="submit" aria-label="Добавить задачу">
+                        Добавить
+                      </button>
+                      <button
+                        class="composer-close"
+                        id="composer-close"
+                        type="button"
+                        aria-label="Скрыть поле добавления"
+                        hidden
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </form>
+                  </div>
+                  <ul class="task-list" id="task-list"></ul>
+                  <div class="empty" id="empty-state" hidden>
+                    <div class="empty-mark" aria-hidden="true"></div>
+                    <h2>Тут пока тихо</h2>
+                    <p>Добавь одну маленькую задачу в строке выше. Даже “налить воды” считается.</p>
+                  </div>
+                </section>
+
+                <section class="day-tools" aria-label="Итоги дня">
+                  <div class="day-review" id="day-review" hidden>
+                    <div class="day-review-head">
+                      <h2>Как прошёл день?</h2>
+                      <div class="day-rating-options" aria-label="Оценка дня">
+                        <button type="button" data-rating="1" aria-label="Оценка 1 из 5">★</button>
+                        <button type="button" data-rating="2" aria-label="Оценка 2 из 5">★</button>
+                        <button type="button" data-rating="3" aria-label="Оценка 3 из 5">★</button>
+                        <button
+                          class="is-active"
+                          type="button"
+                          data-rating="4"
+                          aria-label="Оценка 4 из 5"
+                        >
+                          ★
+                        </button>
+                        <button type="button" data-rating="5" aria-label="Оценка 5 из 5">★</button>
+                      </div>
+                    </div>
+                    <label class="visually-hidden" for="day-note">Что запомнить?</label>
+                    <textarea
+                      id="day-note"
+                      name="day-note"
+                      rows="2"
+                      maxlength="220"
+                      placeholder="Что важно запомнить про этот день?"
+                    ></textarea>
+                    <div class="day-review-actions">
+                      <button class="day-review-submit" id="day-review-submit" type="button">
+                        Сохранить итог
+                      </button>
+                      <button class="day-review-cancel" id="day-review-cancel" type="button">
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                  <button class="day-close" id="close-day" type="button">Закрыть день</button>
+                </section>
+              </section>
+
+              <section class="app-section" id="stats-section" data-section-panel="stats" hidden>
+                <section class="history" aria-label="История дней">
+                  <div class="history-head">
+                    <h2>Статистика</h2>
+                    <span id="history-count">0 дней</span>
+                  </div>
+                  <ol class="history-list" id="history-list"></ol>
+                  <div class="week-summary" id="week-summary" aria-live="polite"></div>
+                </section>
+              </section>
+
+              <section class="app-section" id="recurring-section" data-section-panel="recurring" hidden>
+                <section class="recurring" aria-label="Регулярные задачи">
+                  <div class="recurring-head">
+                    <h2>Регулярные</h2>
+                    <span id="recurring-count">0 активных</span>
+                  </div>
+                  <form class="recurring-form" id="recurring-form">
+                    <label class="visually-hidden" for="recurring-title">Название регулярной задачи</label>
+                    <input
+                      id="recurring-title"
+                      name="recurring-title"
+                      type="text"
+                      autocomplete="off"
+                      placeholder="Что должно появляться каждый день?"
+                      maxlength="90"
+                    />
+                    <label class="visually-hidden" for="recurring-time">Время</label>
+                    <input id="recurring-time" name="recurring-time" type="time" />
+                    <button type="submit">Добавить</button>
+                  </form>
+                  <ul class="recurring-list" id="recurring-list"></ul>
+                  <div class="recurring-empty" id="recurring-empty" hidden>
+                    <h2>Пока без ритуалов</h2>
+                    <p>Добавь задачу, которая должна появляться каждый день.</p>
+                  </div>
+                </section>
+              </section>
+
+              <section class="app-section" id="account-section" data-section-panel="account" hidden>
+                <section class="account" aria-label="Аккаунт">
+                  <div class="account-head">
+                    <h2>Аккаунт</h2>
+                    <p>Данные задач и истории сохраняются в твоём профиле.</p>
+                  </div>
+                  <section class="auth-panel" aria-label="Аккаунт">
+                    <div class="auth-copy">
+                      <strong id="auth-title">Проверяю вход...</strong>
+                    </div>
+                    <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
+                  </section>
+                </section>
+              </section>
             </div>
-            <form class="recurring-form" id="recurring-form">
-              <label class="visually-hidden" for="recurring-title">Название регулярной задачи</label>
-              <input
-                id="recurring-title"
-                name="recurring-title"
-                type="text"
-                autocomplete="off"
-                placeholder="Что должно появляться каждый день?"
-                maxlength="90"
-              />
-              <label class="visually-hidden" for="recurring-time">Время</label>
-              <input id="recurring-time" name="recurring-time" type="time" />
-              <button type="submit">Добавить</button>
-            </form>
-            <ul class="recurring-list" id="recurring-list"></ul>
-            <div class="recurring-empty" id="recurring-empty" hidden>
-              <h2>Пока без ритуалов</h2>
-              <p>Добавь задачу, которая должна появляться каждый день.</p>
-            </div>
-          </section>
+
+          </div>
         </section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./supabase-client.js?v=recurring-2"></script>
-    <script src="./script.js?v=task-lines-1"></script>
+    <script src="./script.js?v=task-lines-3"></script>
   </body>
 </html>
