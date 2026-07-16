@@ -728,7 +728,7 @@ function updateProgress() {
       ? "День закрыт"
       : dayGoalTasks.length === 0
       ? "Цель пока пустая"
-      : `${doneDayTasks.length} из ${dayGoalTasks.length}`;
+      : `${doneDayTasks.length} из ${dayGoalTasks.length} за день завершено`;
   closeDayButton.disabled = dayGoalTasks.length === 0 || dayClosed;
   closeDayButton.textContent = dayClosed ? "День закрыт" : "Закрыть день";
   for (const button of dayRatingButtons) {

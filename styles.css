@@ -77,7 +77,7 @@ button {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   padding: 24px 24px 24px 28px;
 }
 
@@ -86,7 +86,7 @@ button {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
   align-items: center;
   gap: 24px;
-  padding: 2px 0 6px;
+  padding: 2px 0 2px;
 }
 
 .topbar-copy {
@@ -150,10 +150,10 @@ h1 {
 
 .progress-meter {
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(217, 222, 217, 0.82);
+  padding: 8px 0;
+  border: 0;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.58);
+  background: transparent;
 }
 
 .progress-copy {
@@ -176,7 +176,7 @@ h1 {
 .progress-track {
   --progress-rgb: 116, 190, 146;
   --progress-alpha: 0.28;
-  height: 12px;
+  height: 9px;
   overflow: hidden;
   border: 1px solid #c9d2cc;
   border-radius: 999px;
