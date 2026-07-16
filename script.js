@@ -2,6 +2,7 @@ const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
 const ACTIVE_DAY_KEY = "quiet-todo.active-day";
 const RECURRING_KEY = "quiet-todo.recurring";
+const THEME_KEY = "quiet-todo.theme";
 const supabaseClient = window.quietTodoSupabase;
 const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
 const verificationTaskTitles = new Set([
@@ -66,10 +67,13 @@ const dayReviewCancel = document.querySelector("#day-review-cancel");
 const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
 const weekSummary = document.querySelector("#week-summary");
-const authPanel = document.querySelector(".auth-panel");
+const periodMetrics = document.querySelector("#period-metrics");
+const statsMonthPrev = document.querySelector("#stats-month-prev");
+const statsMonthNext = document.querySelector("#stats-month-next");
+const statsMonthLabel = document.querySelector("#stats-month-label");
 const authLogout = document.querySelector("#auth-logout");
-const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
+const accountEmail = document.querySelector("#account-email");
 const workspace = document.querySelector(".workspace");
 const sectionTitle = document.querySelector("#section-title");
 const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
@@ -80,12 +84,16 @@ const recurringTime = document.querySelector("#recurring-time");
 const recurringList = document.querySelector("#recurring-list");
 const recurringCount = document.querySelector("#recurring-count");
 const recurringEmpty = document.querySelector("#recurring-empty");
+const themeToggle = document.querySelector("#theme-toggle");
+const themeStatus = document.querySelector("#theme-status");
 
+let currentTheme = loadTheme();
 let activeDayKey = loadActiveDayKey();
 let tasks = loadTasks();
 let history = loadHistory();
 let recurringTasks = loadRecurringTasks();
 activeDayKey = chooseActiveDayKey(activeDayKey);
+let statsMonthDate = getMonthStart(parseDateKey(activeDayKey));
 let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = false;
@@ -97,6 +105,36 @@ let currentUser = null;
 let cloudSaveTimer = null;
 let isLoadingCloudData = false;
 let cloudHistorySyncEnabled = true;
+
+applyTheme(currentTheme);
+
+function loadTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+
+  if (saved === "dark" || saved === "light") {
+    return saved;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  currentTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = currentTheme;
+
+  if (themeToggle) {
+    themeToggle.checked = currentTheme === "dark";
+  }
+
+  if (themeStatus) {
+    themeStatus.textContent = currentTheme === "dark" ? "Тёмная" : "Светлая";
+  }
+}
+
+function setTheme(theme) {
+  applyTheme(theme);
+  localStorage.setItem(THEME_KEY, currentTheme);
+}
 
 function loadTasks() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -482,6 +520,7 @@ async function loadCloudData() {
       );
 
   activeDayKey = chooseActiveDayKey(activeDayKey);
+  syncStatsMonthToActiveDay();
   saveActiveDayKey();
   isLoadingCloudData = false;
   const didCreateRecurringTasks = ensureRecurringTasksForDay(activeDayKey);
@@ -505,8 +544,10 @@ function setAuthStatus(text) {
 }
 
 function updateAuthUi() {
-  authPanel.classList.toggle("is-signed-in", Boolean(currentUser));
-  authTitle.textContent = currentUser ? currentUser.email : "Нужен вход";
+  if (accountEmail) {
+    accountEmail.textContent = currentUser?.email || "Вход не выполнен";
+  }
+
   setAuthStatus(currentUser ? "Supabase" : "Открываю страницу входа");
 }
 
@@ -523,6 +564,8 @@ async function signOut() {
 
 async function initializeAuth() {
   if (!supabaseClient) {
+    currentUser = null;
+    updateAuthUi();
     setAuthStatus("Supabase не загрузился, работаем локально");
     render();
     return;
@@ -788,15 +831,24 @@ function getActiveDayStats() {
 }
 
 function renderHistory() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(today);
+  const todayKey = getTodayKey();
+  const displayMonth = getMonthStart(statsMonthDate);
+  const year = displayMonth.getFullYear();
+  const month = displayMonth.getMonth();
+  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(displayMonth);
+  const monthLabel = new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric",
+  }).format(displayMonth);
   const dayLabelFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
-  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const monthKey = getMonthKey(displayMonth);
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekdayOffset = (firstDay.getDay() + 6) % 7;
+  const activeDate = parseDateKey(activeDayKey);
+  const activeWeekStart = getWeekStart(activeDate);
+  const activeWeekEnd = new Date(activeWeekStart);
+  activeWeekEnd.setDate(activeWeekStart.getDate() + 6);
   const historyByDate = new Map();
 
   for (const item of history) {
@@ -809,9 +861,13 @@ function renderHistory() {
     item.dateKey.startsWith(monthKey),
   );
 
+  statsMonthDate = displayMonth;
+  statsMonthLabel.textContent = capitalize(monthLabel);
+  statsMonthNext.disabled = compareMonthKeys(monthKey, getMonthKey(new Date())) >= 0;
   historyCount.textContent = `${capitalize(monthName)} · ${monthItems.length} ${getClosedDayWord(
     monthItems.length,
   )}`;
+  renderPeriodMetrics(monthItems);
   historyList.innerHTML = "";
 
   for (const dayName of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
@@ -833,12 +889,13 @@ function renderHistory() {
     const dateKey = getDateKey(date);
     const item = historyByDate.get(dateKey);
     const dayLabel = dayLabelFormatter.format(date);
+    const isSelectedWeek = date >= activeWeekStart && date <= activeWeekEnd;
     const historyItem = document.createElement("li");
     historyItem.className = `calendar-day${item ? ` is-closed ${getSuccessClass(item.percent)}` : ""}${
-      dateKey === getTodayKey() ? " is-today" : ""
+      dateKey === todayKey ? " is-today" : ""
     }${dateKey === activeDayKey ? " is-active" : ""}${
-      compareDateKeys(dateKey, getTodayKey()) <= 0 ? " is-selectable" : ""
-    }`;
+      compareDateKeys(dateKey, todayKey) <= 0 ? " is-selectable" : ""
+    }${isSelectedWeek ? " is-in-selected-week" : ""}`;
     historyItem.setAttribute(
       "aria-label",
       item
@@ -850,7 +907,7 @@ function renderHistory() {
     title.className = "calendar-date";
     title.textContent = String(day);
     historyItem.append(title);
-    if (compareDateKeys(dateKey, getTodayKey()) <= 0) {
+    if (compareDateKeys(dateKey, todayKey) <= 0) {
       historyItem.addEventListener("click", () => setActiveDayKey(dateKey));
     }
 
@@ -892,20 +949,59 @@ function renderHistory() {
     historyList.append(historyItem);
   }
 
-  renderWeekSummary(today);
+  renderWeekSummary(activeDate);
 }
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function renderPeriodMetrics(monthItems) {
+  const stats = getPeriodStats(monthItems);
+  periodMetrics.innerHTML = "";
+
+  for (const item of [
+    { label: "Закрыто дней", value: stats.daysClosed },
+    { label: "Выполнено задач", value: stats.completed },
+    { label: "Средний процент", value: stats.averagePercent === null ? "—" : `${stats.averagePercent}%` },
+    { label: "Средняя оценка", value: stats.averageRating === null ? "—" : stats.averageRating },
+  ]) {
+    const metric = document.createElement("div");
+    const label = document.createElement("span");
+    const value = document.createElement("strong");
+
+    label.textContent = item.label;
+    value.textContent = item.value;
+    metric.append(label, value);
+    periodMetrics.append(metric);
+  }
+}
+
+function getPeriodStats(items) {
+  const completed = items.reduce((sum, item) => sum + item.completed, 0);
+  const percentSum = items.reduce((sum, item) => sum + item.percent, 0);
+  const ratingItems = items.filter((item) => item.rating);
+  const ratingSum = ratingItems.reduce((sum, item) => sum + item.rating, 0);
+
+  return {
+    daysClosed: items.length,
+    completed,
+    averagePercent: items.length === 0 ? null : Math.round(percentSum / items.length),
+    averageRating:
+      ratingItems.length === 0 ? null : (ratingSum / ratingItems.length).toFixed(1).replace(".", ","),
+  };
+}
+
 function renderWeekSummary(date) {
   const stats = getWeekStats(date);
+  const weekStart = getWeekStart(date);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
   weekSummary.innerHTML = "";
 
   const title = document.createElement("span");
   title.className = "week-summary-title";
-  title.textContent = "Итог недели";
+  title.textContent = `Итог недели · ${formatWeekRange(weekStart, weekEnd)}`;
   weekSummary.append(title);
 
   if (stats.daysClosed === 0) {
@@ -968,6 +1064,46 @@ function getWeekStart(date) {
 function parseDateKey(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function getMonthStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthKey(date) {
+  const monthStart = getMonthStart(date);
+  const year = monthStart.getFullYear();
+  const month = String(monthStart.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function compareMonthKeys(left, right) {
+  return left.localeCompare(right);
+}
+
+function addMonths(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function syncStatsMonthToActiveDay() {
+  statsMonthDate = getMonthStart(parseDateKey(activeDayKey));
+}
+
+function setStatsMonthDate(date) {
+  const nextMonth = getMonthStart(date);
+
+  if (compareMonthKeys(getMonthKey(nextMonth), getMonthKey(new Date())) > 0) {
+    return;
+  }
+
+  statsMonthDate = nextMonth;
+  render();
+}
+
+function formatWeekRange(start, end) {
+  const formatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+  return `${formatter.format(start).replace(".", "")} — ${formatter.format(end).replace(".", "")}`;
 }
 
 function normalizeDateKey(dateKey) {
@@ -1114,6 +1250,7 @@ function setActiveDayKey(dateKey) {
   }
 
   activeDayKey = normalized;
+  syncStatsMonthToActiveDay();
   saveActiveDayKey();
   hideDayReview();
   render();
@@ -1626,6 +1763,7 @@ function closeDay() {
   if (compareDateKeys(activeDayKey, getTodayKey()) < 0) {
     activeDayKey = getTodayKey();
   }
+  syncStatsMonthToActiveDay();
   dayNote.value = "";
   saveActiveDayKey();
   saveTasks();
@@ -1688,6 +1826,7 @@ function undoCloseDay(historyId) {
   history = history.filter((entry) => entry.id !== historyId);
 
   activeDayKey = item.dateKey;
+  syncStatsMonthToActiveDay();
   saveActiveDayKey();
   saveTasks();
   saveHistory();
@@ -2007,6 +2146,14 @@ dayPicker.addEventListener("change", () => {
   setActiveDayKey(dayPicker.value);
 });
 
+statsMonthPrev.addEventListener("click", () => {
+  setStatsMonthDate(addMonths(statsMonthDate, -1));
+});
+
+statsMonthNext.addEventListener("click", () => {
+  setStatsMonthDate(addMonths(statsMonthDate, 1));
+});
+
 closeDayButton.addEventListener("click", closeDay);
 
 dayReviewSubmit.addEventListener("click", closeDay);
@@ -2023,6 +2170,10 @@ for (const button of dayRatingButtons) {
 
 authLogout.addEventListener("click", () => {
   signOut();
+});
+
+themeToggle.addEventListener("change", () => {
+  setTheme(themeToggle.checked ? "dark" : "light");
 });
 
 setComposerExpanded(false);

@@ -10,6 +10,19 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (() => {
+        const savedTheme = localStorage.getItem("quiet-todo.theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const theme =
+          savedTheme === "dark" || savedTheme === "light"
+            ? savedTheme
+            : prefersDark
+              ? "dark"
+              : "light";
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <link rel="stylesheet" href="./styles.css?v=day-review-1" />
   </head>
   <body>
@@ -173,9 +186,31 @@
               <section class="app-section" id="stats-section" data-section-panel="stats" hidden>
                 <section class="history" aria-label="История дней">
                   <div class="history-head">
-                    <h2>Статистика</h2>
-                    <span id="history-count">0 дней</span>
+                    <div class="history-title">
+                      <h2>Статистика</h2>
+                      <span id="history-count">0 дней</span>
+                    </div>
+                    <div class="month-nav" aria-label="Переключение месяцев статистики">
+                      <button
+                        class="month-arrow"
+                        id="stats-month-prev"
+                        type="button"
+                        aria-label="Предыдущий месяц"
+                      >
+                        ←
+                      </button>
+                      <span id="stats-month-label">Июль 2026</span>
+                      <button
+                        class="month-arrow"
+                        id="stats-month-next"
+                        type="button"
+                        aria-label="Следующий месяц"
+                      >
+                        →
+                      </button>
+                    </div>
                   </div>
+                  <div class="period-metrics" id="period-metrics" aria-live="polite"></div>
                   <ol class="history-list" id="history-list"></ol>
                   <div class="week-summary" id="week-summary" aria-live="polite"></div>
                 </section>
@@ -213,14 +248,32 @@
                 <section class="account" aria-label="Аккаунт">
                   <div class="account-head">
                     <h2>Аккаунт</h2>
-                    <p>Данные задач и истории сохраняются в твоём профиле.</p>
                   </div>
-                  <section class="auth-panel" aria-label="Аккаунт">
-                    <div class="auth-copy">
-                      <strong id="auth-title">Проверяю вход...</strong>
-                    </div>
-                    <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
-                  </section>
+                  <div class="account-list">
+                    <section class="account-row account-email-row" aria-label="Почта аккаунта">
+                      <div class="account-row-copy">
+                        <strong>Почта</strong>
+                      </div>
+                      <span class="account-email" id="account-email">Проверяю вход</span>
+                    </section>
+                    <section class="account-row theme-setting" aria-label="Тема интерфейса">
+                      <div class="account-row-copy theme-setting-copy">
+                        <strong>Тема интерфейса</strong>
+                        <small id="theme-status">Светлая</small>
+                      </div>
+                      <label class="theme-toggle">
+                        <input id="theme-toggle" type="checkbox" aria-label="Включить тёмную тему" />
+                        <span aria-hidden="true"></span>
+                      </label>
+                    </section>
+                    <section class="account-row account-exit" aria-label="Выход из аккаунта">
+                      <div class="account-row-copy account-exit-copy">
+                        <strong>Выход из аккаунта</strong>
+                        <p>Локальные настройки останутся на этом устройстве.</p>
+                      </div>
+                      <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
+                    </section>
+                  </div>
                 </section>
               </section>
             </div>
