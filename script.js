@@ -54,6 +54,8 @@ const progressDetail = document.querySelector("#progress-detail");
 const progressTrack = document.querySelector(".progress-track");
 const closeDayButton = document.querySelector("#close-day");
 const activeDayTitle = document.querySelector("#active-day-title");
+const dayDateButton = document.querySelector("#day-date-button");
+const dayPicker = document.querySelector("#day-picker");
 const dayPrevButton = document.querySelector("#day-prev");
 const dayNextButton = document.querySelector("#day-next");
 const dayReview = document.querySelector("#day-review");
@@ -688,7 +690,9 @@ function switchSection(section) {
     recurring: "Повторяющиеся задачи",
     account: "Аккаунт",
   };
-  sectionTitle.textContent = sectionTitles[currentSection];
+  if (sectionTitle) {
+    sectionTitle.textContent = sectionTitles[currentSection];
+  }
 
   for (const tab of sectionTabs) {
     const isActive = tab.dataset.section === currentSection;
@@ -710,16 +714,21 @@ function updateProgress() {
     dayGoalTasks.length === 0
       ? 0
       : Math.round((doneDayTasks.length / dayGoalTasks.length) * 100);
+  const progressTone = progress < 33 ? "is-low" : progress <= 66 ? "is-mid" : "is-high";
+  const progressAlpha = (0.16 + (progress / 100) * 0.34).toFixed(2);
 
   progressFill.style.setProperty("--progress", `${progress}%`);
+  progressTrack.style.setProperty("--progress-alpha", progressAlpha);
+  progressTrack.classList.remove("is-low", "is-mid", "is-high");
+  progressTrack.classList.add(progressTone);
   progressTrack.setAttribute("aria-valuenow", String(progress));
   progressLabel.textContent = `${progress}%`;
   progressDetail.textContent =
     dayClosed
-      ? "День закрыт. Можно посмотреть задачи и итог"
+      ? "День закрыт"
       : dayGoalTasks.length === 0
-      ? "Добавь задачу, и шкала оживёт"
-      : `${doneDayTasks.length} из ${dayGoalTasks.length} за день завершено`;
+      ? "Цель пока пустая"
+      : `${doneDayTasks.length} из ${dayGoalTasks.length}`;
   closeDayButton.disabled = dayGoalTasks.length === 0 || dayClosed;
   closeDayButton.textContent = dayClosed ? "День закрыт" : "Закрыть день";
   for (const button of dayRatingButtons) {
@@ -989,6 +998,29 @@ function formatDayLabel(dateKey) {
   }).format(date);
 }
 
+function formatDayNavLabel(dateKey) {
+  const date = parseDateKey(dateKey);
+  const todayKey = getTodayKey();
+  const dateLabel = formatDayLabel(dateKey);
+  const weekday = new Intl.DateTimeFormat("ru-RU", { weekday: "short" })
+    .format(date)
+    .replace(".", "");
+
+  if (dateKey === todayKey) {
+    return `Сегодня, ${dateLabel}, ${weekday}`;
+  }
+
+  if (dateKey === addDays(todayKey, 1)) {
+    return `Завтра, ${dateLabel}, ${weekday}`;
+  }
+
+  if (dateKey === addDays(todayKey, -1)) {
+    return `Вчера, ${dateLabel}, ${weekday}`;
+  }
+
+  return `${dateLabel}, ${weekday}`;
+}
+
 function getSuccessClass(percent) {
   if (percent < 50) {
     return "is-low";
@@ -1088,7 +1120,8 @@ function setActiveDayKey(dateKey) {
 }
 
 function renderDaySwitcher() {
-  activeDayTitle.textContent = formatDayLabel(activeDayKey);
+  activeDayTitle.textContent = formatDayNavLabel(activeDayKey);
+  dayPicker.value = activeDayKey;
   dayPrevButton.disabled = false;
   dayNextButton.disabled = false;
 }
@@ -1958,6 +1991,20 @@ dayPrevButton.addEventListener("click", () => {
 
 dayNextButton.addEventListener("click", () => {
   setActiveDayKey(addDays(activeDayKey, 1));
+});
+
+dayDateButton.addEventListener("click", () => {
+  if (typeof dayPicker.showPicker === "function") {
+    dayPicker.showPicker();
+    return;
+  }
+
+  dayPicker.click();
+  dayPicker.focus();
+});
+
+dayPicker.addEventListener("change", () => {
+  setActiveDayKey(dayPicker.value);
 });
 
 closeDayButton.addEventListener("click", closeDay);

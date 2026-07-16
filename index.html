@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=task-lines-2" />
+    <link rel="stylesheet" href="./styles.css?v=day-nav-1" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -57,9 +57,20 @@
 
         <section class="workspace-main">
           <header class="topbar">
-            <div class="topbar-copy">
-              <strong id="section-title">Фокус на день</strong>
-            </div>
+            <section class="day-nav" aria-label="Рабочий день">
+              <button class="day-date-button" id="day-date-button" type="button">
+                <span id="active-day-title">Сегодня, 15 июля, ср</span>
+              </button>
+              <input class="day-picker" id="day-picker" type="date" aria-label="Выбрать день" />
+              <div class="day-nav-arrows" aria-label="Переключение дней">
+                <button class="day-arrow" id="day-prev" type="button" aria-label="Предыдущий день">
+                  ←
+                </button>
+                <button class="day-arrow" id="day-next" type="button" aria-label="Следующий день">
+                  →
+                </button>
+              </div>
+            </section>
             <section class="progress-card" aria-label="Прогресс задач">
               <div class="progress-meter">
                 <div class="progress-copy">
@@ -69,14 +80,14 @@
                 <div
                   class="progress-track"
                   role="progressbar"
-                  aria-label="Выполнено задач на сегодня"
+                  aria-label="Выполнено задач за рабочий день"
                   aria-valuemin="0"
                   aria-valuemax="100"
                   aria-valuenow="0"
                 >
                   <span id="progress-fill"></span>
                 </div>
-                <p id="progress-detail">Сегодняшняя цель пока пустая</p>
+                <p id="progress-detail">Цель пока пустая</p>
               </div>
             </section>
           </header>
@@ -84,19 +95,6 @@
           <div class="workspace-body">
             <div class="content-column">
               <section class="app-section is-active" id="tasks-section" data-section-panel="tasks">
-                <section class="day-switcher" aria-label="Рабочий день">
-                  <button class="day-arrow" id="day-prev" type="button" aria-label="Предыдущий день">
-                    ←
-                  </button>
-                  <div class="day-switcher-copy">
-                    <span>Рабочий день</span>
-                    <strong id="active-day-title">15 июля</strong>
-                  </div>
-                  <button class="day-arrow" id="day-next" type="button" aria-label="Следующий день">
-                    →
-                  </button>
-                </section>
-
                 <section class="list-shell" aria-label="Задачи">
                   <div class="task-controls">
                     <form class="composer is-collapsed" id="task-form" aria-expanded="false">
@@ -234,6 +232,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./supabase-client.js?v=recurring-2"></script>
-    <script src="./script.js?v=task-lines-3"></script>
+    <script src="./script.js?v=day-nav-1"></script>
   </body>
 </html>
