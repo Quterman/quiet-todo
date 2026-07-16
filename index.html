@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css?v=recurring-2" />
@@ -87,38 +87,38 @@
             </button>
           </section>
 
-          <div class="task-controls">
-            <form class="composer is-expanded" id="task-form" aria-expanded="true">
-              <label class="visually-hidden" for="task-input">Новая задача</label>
-              <input
-                id="task-input"
-                name="task"
-                type="text"
-                autocomplete="off"
-                placeholder="Что нужно сделать?"
-                maxlength="90"
-              />
-              <button class="composer-submit" type="submit" aria-label="Добавить задачу">
-                <span aria-hidden="true">+</span>
-              </button>
-              <button
-                class="composer-close"
-                id="composer-close"
-                type="button"
-                aria-label="Скрыть поле добавления"
-                hidden
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </form>
-          </div>
-
           <section class="list-shell" aria-label="Задачи">
+            <div class="task-controls">
+              <form class="composer is-collapsed" id="task-form" aria-expanded="false">
+                <label class="visually-hidden" for="task-input">Новая задача</label>
+                <button class="composer-open" id="composer-open" type="button">+ Новая задача</button>
+                <input
+                  id="task-input"
+                  name="task"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Новая задача"
+                  maxlength="90"
+                />
+                <button class="composer-submit" type="submit" aria-label="Добавить задачу">
+                  Добавить
+                </button>
+                <button
+                  class="composer-close"
+                  id="composer-close"
+                  type="button"
+                  aria-label="Скрыть поле добавления"
+                  hidden
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              </form>
+            </div>
             <ul class="task-list" id="task-list"></ul>
             <div class="empty" id="empty-state" hidden>
               <div class="empty-mark" aria-hidden="true"></div>
               <h2>Тут пока тихо</h2>
-              <p>Добавь одну маленькую задачу сверху. Даже “налить воды” считается.</p>
+              <p>Добавь одну маленькую задачу в строке выше. Даже “налить воды” считается.</p>
             </div>
           </section>
 

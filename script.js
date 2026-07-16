@@ -40,6 +40,7 @@ const priorities = {
 
 const taskControls = document.querySelector(".task-controls");
 const form = document.querySelector("#task-form");
+const composerOpen = document.querySelector("#composer-open");
 const input = document.querySelector("#task-input");
 const composerSubmit = document.querySelector(".composer-submit");
 const composerClose = document.querySelector("#composer-close");
@@ -83,7 +84,7 @@ let recurringTasks = loadRecurringTasks();
 activeDayKey = chooseActiveDayKey(activeDayKey);
 let draggedTaskId = null;
 let pointerDrag = null;
-let composerExpanded = true;
+let composerExpanded = false;
 let currentSection = "tasks";
 let selectedDayRating = 4;
 let editingDueTaskId = null;
@@ -565,15 +566,11 @@ function render() {
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
 
-  const focusTaskCount = visibleTasks.filter((task) => task.priority === "high").length;
-  const shouldShowFocusDivider = focusTaskCount > 0 && focusTaskCount < visibleTasks.length;
-
   for (const [index, task] of visibleTasks.entries()) {
     const item = document.createElement("li");
-    const startsRegularGroup = shouldShowFocusDivider && index === focusTaskCount;
     item.className = `task${task.done ? " is-done" : ""}${task.priority === "high" ? " is-focus" : ""}${
-      startsRegularGroup ? " starts-regular-group" : ""
-    }${editingNoteTaskId === task.id ? " is-note-open" : ""}`;
+      editingNoteTaskId === task.id ? " is-note-open" : ""
+    }`;
     item.dataset.id = task.id;
     item.draggable = !dayClosed && !task.done;
 
@@ -725,11 +722,17 @@ function updateComposerLock() {
   const inputLocked = isActiveDayClosed();
 
   input.disabled = inputLocked;
+  composerOpen.disabled = inputLocked;
   composerSubmit.disabled = inputLocked;
   composerClose.disabled = inputLocked;
   form.classList.toggle("is-locked", inputLocked);
 
-  input.placeholder = inputLocked ? "Этот день уже закрыт" : "Что нужно сделать?";
+  input.placeholder = inputLocked ? "Этот день уже закрыт" : "Новая задача";
+  composerOpen.textContent = inputLocked ? "День закрыт" : "+ Новая задача";
+
+  if (inputLocked) {
+    setComposerExpanded(false);
+  }
 }
 
 function getActiveDayGoalTasks() {
@@ -1043,16 +1046,16 @@ function renderDaySwitcher() {
 }
 
 function setComposerExpanded(expanded, { focus = false } = {}) {
-  composerExpanded = true;
-  form.classList.add("is-expanded");
-  form.classList.remove("is-collapsed");
-  form.setAttribute("aria-expanded", "true");
-  taskControls.classList.remove("is-composer-open");
+  composerExpanded = Boolean(expanded);
+  form.classList.toggle("is-expanded", composerExpanded);
+  form.classList.toggle("is-collapsed", !composerExpanded);
+  form.setAttribute("aria-expanded", String(composerExpanded));
+  taskControls.classList.toggle("is-composer-open", composerExpanded);
   composerClose.hidden = true;
   composerSubmit.setAttribute("aria-label", "Добавить задачу");
-  input.tabIndex = 0;
+  input.tabIndex = composerExpanded ? 0 : -1;
 
-  if ((expanded || composerExpanded) && focus) {
+  if (composerExpanded && focus) {
     input.focus();
   }
 }
@@ -1834,6 +1837,11 @@ document.addEventListener("click", (event) => {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  if (!composerExpanded) {
+    setComposerExpanded(true, { focus: true });
+    return;
+  }
+
   const title = input.value.trim();
 
   if (!title) {
@@ -1843,7 +1851,7 @@ form.addEventListener("submit", (event) => {
 
   addTask(title);
   input.value = "";
-  input.focus();
+  setComposerExpanded(false);
 });
 
 recurringForm.addEventListener("submit", (event) => {
@@ -1857,7 +1865,15 @@ recurringForm.addEventListener("submit", (event) => {
 
 composerClose.addEventListener("click", () => {
   input.value = "";
-  input.focus();
+  setComposerExpanded(false);
+});
+
+composerOpen.addEventListener("click", () => {
+  if (isActiveDayClosed()) {
+    return;
+  }
+
+  setComposerExpanded(true, { focus: true });
 });
 
 for (const tab of sectionTabs) {

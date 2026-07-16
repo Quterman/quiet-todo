@@ -89,7 +89,7 @@ h1 {
   background: transparent;
   color: var(--ink);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
   text-align: center;
@@ -115,13 +115,13 @@ h1 {
   margin-bottom: 7px;
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 680;
+  font-weight: 600;
 }
 
 .progress-copy strong {
   color: var(--ink);
   font-size: 0.95rem;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .progress-track {
@@ -294,7 +294,7 @@ h1 {
 .auth-card-head span {
   color: var(--mint-strong);
   font-size: 0.76rem;
-  font-weight: 720;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -361,7 +361,7 @@ h1 {
 .login-form label {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 740;
+  font-weight: 600;
 }
 
 .login-form input {
@@ -391,7 +391,7 @@ h1 {
   border-radius: 8px;
   background: #dcebe2;
   color: #24312a;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .login-primary:disabled,
@@ -432,7 +432,7 @@ h1 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
   color: var(--muted);
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .login-secondary[hidden] {
@@ -446,7 +446,7 @@ h1 {
   background: transparent;
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.45;
   text-align: center;
 }
@@ -476,7 +476,7 @@ h1 {
   display: block;
   color: var(--muted);
   font-size: 0.68rem;
-  font-weight: 760;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -485,7 +485,7 @@ h1 {
   margin-top: 3px;
   color: var(--ink);
   font-size: 1.18rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .day-arrow {
@@ -498,7 +498,7 @@ h1 {
   background: rgba(255, 255, 255, 0.62);
   color: var(--ink);
   font-size: 1rem;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .day-arrow:hover {
@@ -508,33 +508,77 @@ h1 {
 
 .task-controls {
   display: block;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .composer {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(217, 222, 217, 0.82);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.composer:focus-within {
+  border-color: var(--mint-strong);
+}
+
+.composer-open {
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mint-strong);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.composer-open:hover {
+  color: #4f9d73;
+}
+
+.composer-open:disabled {
+  cursor: not-allowed;
+  color: rgba(105, 113, 111, 0.58);
 }
 
 .composer.is-expanded {
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.composer.is-expanded .composer-open,
+.composer.is-collapsed input,
+.composer.is-collapsed .composer-submit {
+  display: none;
 }
 
 .composer input,
 .composer select {
   min-width: 0;
-  height: 46px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
   outline: none;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.composer input::placeholder {
+  color: rgba(105, 113, 111, 0.68);
 }
 
 .composer select {
@@ -545,23 +589,29 @@ h1 {
 
 .composer input:focus,
 .composer select:focus {
-  border-color: var(--mint-strong);
-  box-shadow: 0 0 0 4px rgba(118, 183, 149, 0.17);
+  box-shadow: none;
 }
 
 .composer-submit,
 .composer-close {
-  width: 40px;
-  height: 46px;
+  width: auto;
+  height: 34px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   line-height: 1;
 }
 
 .composer-submit {
-  background: var(--ink);
-  color: white;
-  font-size: 1.48rem;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--mint-strong);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.composer-submit:hover {
+  background: rgba(217, 239, 227, 0.46);
+  color: #4f9d73;
 }
 
 .composer-close {
@@ -608,7 +658,7 @@ h1 {
   margin: 0;
   color: var(--ink);
   font-size: 1rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .day-rating-options {
@@ -625,7 +675,7 @@ h1 {
   background: transparent;
   color: #c2c9c4;
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   transition:
     background-color 160ms ease,
@@ -653,7 +703,7 @@ h1 {
 .day-review label {
   color: var(--muted);
   font-size: 0.76rem;
-  font-weight: 720;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -701,14 +751,14 @@ h1 {
   border-radius: 8px;
   color: var(--ink);
   font-size: 0.78rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .day-review-submit {
   min-width: 190px;
   background: #dcebe2;
   color: #24312a;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .day-review-cancel {
@@ -727,7 +777,7 @@ h1 {
   background: rgba(220, 235, 226, 0.72);
   color: #24312a;
   font-size: 0.88rem;
-  font-weight: 780;
+  font-weight: 700;
   text-align: center;
   transition:
     background-color 160ms ease,
@@ -783,7 +833,7 @@ h1 {
 .recurring-head span {
   color: var(--muted);
   font-size: 0.74rem;
-  font-weight: 720;
+  font-weight: 600;
 }
 
 .recurring-form {
@@ -817,7 +867,7 @@ h1 {
   border: 1px solid #b9c9bf;
   background: #dcebe2;
   color: #24312a;
-  font-weight: 780;
+  font-weight: 700;
 }
 
 .recurring-list {
@@ -858,7 +908,7 @@ h1 {
 .recurring-copy span {
   color: var(--muted);
   font-size: 0.7rem;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .recurring-toggle,
@@ -866,7 +916,7 @@ h1 {
   min-height: 34px;
   border-radius: 8px;
   font-size: 0.7rem;
-  font-weight: 740;
+  font-weight: 600;
 }
 
 .recurring-toggle {
@@ -934,7 +984,7 @@ h1 {
 .history-head span {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .history-list {
@@ -957,7 +1007,7 @@ h1 {
 .week-summary-title {
   color: var(--ink);
   font-size: 0.86rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .week-summary-empty {
@@ -985,14 +1035,14 @@ h1 {
 .week-summary-list dt {
   color: var(--muted);
   font-size: 0.68rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .week-summary-list dd {
   margin: 3px 0 0;
   color: var(--ink);
   font-size: 0.95rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .calendar-weekday {
@@ -1000,7 +1050,7 @@ h1 {
   padding: 2px 0 4px;
   color: var(--muted);
   font-size: 0.68rem;
-  font-weight: 820;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -1080,7 +1130,7 @@ h1 {
   left: 9px;
   color: var(--ink);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1;
 }
 
@@ -1101,14 +1151,14 @@ h1 {
   grid-area: 1 / 1;
   color: var(--ink);
   font-size: 0.88rem;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1;
 }
 
 .calendar-percent {
   color: var(--success-color);
   font-size: 0.72rem;
-  font-weight: 820;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1154,7 +1204,7 @@ h1 {
 .list-shell {
   position: relative;
   min-height: 0;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .list-shell.is-drop-target {
@@ -1165,7 +1215,7 @@ h1 {
 
 .task-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1174,30 +1224,23 @@ h1 {
 .task {
   position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) minmax(88px, auto) 34px;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(88px, auto) 30px;
   align-items: center;
-  gap: 8px;
-  min-height: 50px;
-  padding: 7px;
-  border: 1px solid rgba(217, 222, 217, 0.82);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(217, 222, 217, 0.82);
+  background: transparent;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
+    background 160ms ease,
     opacity 160ms ease,
     transform 160ms ease;
 }
 
 .task.is-focus {
-  border-color: rgba(228, 184, 174, 0.62);
   background:
-    linear-gradient(90deg, rgba(242, 139, 119, 0.2) 0 4px, transparent 4px),
-    rgba(255, 255, 255, 0.78);
-}
-
-.task.starts-regular-group {
-  margin-top: 10px;
+    linear-gradient(90deg, rgba(242, 139, 119, 0.14) 0 3px, transparent 3px),
+    transparent;
 }
 
 .task[draggable="true"] {
@@ -1212,7 +1255,7 @@ h1 {
 }
 
 .task.is-drop-before {
-  border-top-color: var(--mint-strong);
+  border-top: 1px solid var(--mint-strong);
   box-shadow: inset 0 3px 0 var(--mint-strong);
 }
 
@@ -1223,23 +1266,23 @@ h1 {
 
 .task.is-done {
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.6);
+  background: transparent;
 }
 
 .task-check,
 .task-delete {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 50%;
 }
 
 .task-check {
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.58);
   color: transparent;
-  font-size: 0.9rem;
+  font-size: 0.76rem;
 }
 
 .task.is-done .task-check {
@@ -1251,7 +1294,8 @@ h1 {
 .task-title {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-weight: 620;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .task-copy {
@@ -1269,7 +1313,7 @@ h1 {
   background: transparent;
   color: rgba(105, 113, 111, 0.78);
   font-size: 0.72rem;
-  font-weight: 560;
+  font-weight: 500;
   line-height: 1.35;
   text-align: left;
   text-overflow: ellipsis;
@@ -1318,7 +1362,7 @@ h1 {
   padding: 0 10px;
   border-radius: 7px;
   font-size: 0.68rem;
-  font-weight: 740;
+  font-weight: 600;
 }
 
 .task-note-save {
@@ -1348,7 +1392,7 @@ h1 {
   background: rgba(255, 255, 255, 0.92);
   color: rgba(105, 113, 111, 0.7);
   font-size: 0.66rem;
-  font-weight: 740;
+  font-weight: 600;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1377,11 +1421,11 @@ h1 {
 
 .task-priority {
   position: absolute;
-  top: 7px;
-  bottom: 7px;
+  top: 10px;
+  bottom: 10px;
   left: 0;
   z-index: 2;
-  width: 10px;
+  width: 6px;
   min-width: 0;
   height: auto;
   padding: 0;
@@ -1411,7 +1455,7 @@ h1 {
   background: transparent;
   color: rgba(105, 113, 111, 0.68);
   font-size: 0.68rem;
-  font-weight: 720;
+  font-weight: 600;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1463,7 +1507,7 @@ h1 {
   height: 34px;
   border-radius: 7px;
   font-size: 0.72rem;
-  font-weight: 720;
+  font-weight: 600;
 }
 
 .task-due-editor input {
@@ -1667,7 +1711,7 @@ h1 {
   }
 
   .composer.is-expanded {
-    grid-template-columns: minmax(0, 1fr) 40px 34px;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .recurring {
@@ -1687,7 +1731,7 @@ h1 {
   }
 
   .task {
-    grid-template-columns: 34px minmax(0, 1fr) 32px;
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
   }
 
   .task-check {
@@ -1707,10 +1751,10 @@ h1 {
   }
 
   .task-priority {
-    top: 7px;
-    bottom: 7px;
+    top: 10px;
+    bottom: 10px;
     left: 0;
-    width: 10px;
+    width: 6px;
   }
 
   .task-delete {
