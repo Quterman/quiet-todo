@@ -1,6 +1,7 @@
 const STORAGE_KEY = "quiet-todo.tasks";
 const HISTORY_KEY = "quiet-todo.history";
 const ACTIVE_DAY_KEY = "quiet-todo.active-day";
+const RECURRING_KEY = "quiet-todo.recurring";
 const supabaseClient = window.quietTodoSupabase;
 const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
 const verificationTaskTitles = new Set([
@@ -19,6 +20,7 @@ const initialTasks = [
     priority: "medium",
     dueAt: null,
     note: "",
+    recurringId: null,
     dateKey: getTodayKey(),
   },
 ];
@@ -67,10 +69,17 @@ const authTitle = document.querySelector("#auth-title");
 const authStatus = document.querySelector("#auth-status");
 const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
 const sectionPanels = Array.from(document.querySelectorAll("[data-section-panel]"));
+const recurringForm = document.querySelector("#recurring-form");
+const recurringTitle = document.querySelector("#recurring-title");
+const recurringTime = document.querySelector("#recurring-time");
+const recurringList = document.querySelector("#recurring-list");
+const recurringCount = document.querySelector("#recurring-count");
+const recurringEmpty = document.querySelector("#recurring-empty");
 
 let activeDayKey = loadActiveDayKey();
 let tasks = loadTasks();
 let history = loadHistory();
+let recurringTasks = loadRecurringTasks();
 activeDayKey = chooseActiveDayKey(activeDayKey);
 let draggedTaskId = null;
 let pointerDrag = null;
@@ -117,6 +126,21 @@ function loadHistory() {
   }
 }
 
+function loadRecurringTasks() {
+  const saved = localStorage.getItem(RECURRING_KEY);
+
+  if (!saved) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map((item) => normalizeRecurringTask(item)) : [];
+  } catch {
+    return [];
+  }
+}
+
 function loadActiveDayKey() {
   const saved = localStorage.getItem(ACTIVE_DAY_KEY);
   return normalizeDateKey(saved) || getTodayKey();
@@ -132,7 +156,18 @@ function normalizeTask(task) {
     priority: priorities[task.priority] ? task.priority : "medium",
     dueAt: normalizeDueAt(task.dueAt),
     note: normalizeTaskNote(task.note),
+    recurringId: task.recurringId || task.recurring_id || null,
     dateKey: normalizeDateKey(task.dateKey) || getTodayKey(),
+  };
+}
+
+function normalizeRecurringTask(item) {
+  return {
+    id: item.id || crypto.randomUUID(),
+    title: normalizeTaskTitle(item.title),
+    time: normalizeRecurringTime(item.time),
+    isActive: item.isActive ?? item.is_active ?? true,
+    createdAt: item.createdAt || item.created_at || new Date().toISOString(),
   };
 }
 
@@ -170,6 +205,13 @@ function saveHistory() {
   scheduleCloudSave();
 }
 
+function saveRecurringTasks() {
+  if (!currentUser) {
+    localStorage.setItem(RECURRING_KEY, JSON.stringify(recurringTasks));
+  }
+  scheduleCloudSave();
+}
+
 function saveActiveDayKey() {
   localStorage.setItem(ACTIVE_DAY_KEY, activeDayKey);
 }
@@ -194,6 +236,7 @@ async function saveCloudData() {
 
   const userId = currentUser.id;
   const skippedTaskColumns = new Set();
+  const cloudWarnings = [];
   const taskRows = tasks.map((task, index) => ({
     id: task.id,
     user_id: userId,
@@ -204,8 +247,17 @@ async function saveCloudData() {
     priority: task.priority,
     due_at: task.dueAt,
     note: task.note,
+    recurring_id: task.recurringId,
     date_key: task.dateKey,
     sort_order: index,
+  }));
+  const recurringRows = recurringTasks.map((item) => ({
+    id: item.id,
+    user_id: userId,
+    title: item.title,
+    time: item.time,
+    is_active: item.isActive,
+    created_at: item.createdAt,
   }));
   const historyRows = history.map((item) => ({
     id: item.id,
@@ -244,6 +296,29 @@ async function saveCloudData() {
     if (historyDelete.error) {
       setAuthStatus(`Ошибка очистки истории: ${historyDelete.error.message}`);
       return;
+    }
+  }
+
+  if (recurringRows.length > 0) {
+    const recurringUpsert = await supabaseClient
+      .from("recurring_tasks")
+      .upsert(recurringRows, { onConflict: "id" });
+    if (recurringUpsert.error) {
+      cloudWarnings.push(`регулярные не сохранены: ${recurringUpsert.error.message}`);
+    } else {
+      const recurringDelete = await supabaseClient
+        .from("recurring_tasks")
+        .delete()
+        .eq("user_id", userId)
+        .not("id", "in", `(${recurringRows.map((item) => item.id).join(",")})`);
+      if (recurringDelete.error) {
+        cloudWarnings.push(`регулярные не очищены: ${recurringDelete.error.message}`);
+      }
+    }
+  } else {
+    const recurringDelete = await supabaseClient.from("recurring_tasks").delete().eq("user_id", userId);
+    if (recurringDelete.error) {
+      cloudWarnings.push(`регулярные не очищены: ${recurringDelete.error.message}`);
     }
   }
 
@@ -293,6 +368,8 @@ async function saveCloudData() {
   setAuthStatus(
     skippedTaskColumns.size > 0
       ? `Задачи сохранены. Для новых полей добавь в Supabase: ${Array.from(skippedTaskColumns).join(", ")}.`
+      : cloudWarnings.length > 0
+      ? `Задачи сохранены. ${cloudWarnings[0]}`
       : "Синхронизировано",
   );
 }
@@ -310,6 +387,10 @@ function getMissingOptionalTaskColumn(error) {
 
   if (message.includes("note")) {
     return "note";
+  }
+
+  if (message.includes("recurring_id")) {
+    return "recurring_id";
   }
 
   return null;
@@ -331,6 +412,10 @@ async function loadCloudData() {
     .from("day_history")
     .select("*")
     .order("created_at", { ascending: false });
+  const recurringResult = await supabaseClient
+    .from("recurring_tasks")
+    .select("*")
+    .order("created_at", { ascending: true });
 
   if (taskResult.error) {
     setAuthStatus(`Ошибка загрузки задач: ${taskResult.error.message}`);
@@ -344,6 +429,11 @@ async function loadCloudData() {
     return;
   }
 
+  if (recurringResult.error) {
+    recurringTasks = [];
+    setAuthStatus(`Задачи загрузились. Регулярные пока недоступны: ${recurringResult.error.message}`);
+  }
+
   tasks = taskResult.data.map((row) =>
     normalizeTask({
       id: row.id,
@@ -354,9 +444,21 @@ async function loadCloudData() {
       priority: row.priority,
       dueAt: row.due_at,
       note: row.note,
+      recurringId: row.recurring_id,
       dateKey: row.date_key,
     }),
   );
+  if (!recurringResult.error) {
+    recurringTasks = recurringResult.data.map((row) =>
+      normalizeRecurringTask({
+        id: row.id,
+        title: row.title,
+        time: row.time,
+        isActive: row.is_active,
+        createdAt: row.created_at,
+      }),
+    );
+  }
   history = historyResult.data.map((row) =>
     normalizeHistoryItem({
       id: row.id,
@@ -375,7 +477,15 @@ async function loadCloudData() {
   activeDayKey = chooseActiveDayKey(activeDayKey);
   saveActiveDayKey();
   isLoadingCloudData = false;
-  setAuthStatus("Данные загружены из Supabase");
+  const didCreateRecurringTasks = ensureRecurringTasksForDay(activeDayKey);
+  if (didCreateRecurringTasks) {
+    scheduleCloudSave();
+  }
+  setAuthStatus(
+    recurringResult.error
+      ? `Задачи загружены. Регулярные пока недоступны: ${recurringResult.error.message}`
+      : "Данные загружены из Supabase",
+  );
   render();
 }
 
@@ -437,6 +547,7 @@ async function initializeAuth() {
 }
 
 function render() {
+  ensureRecurringTasksForDay(activeDayKey);
   const visibleTasks = getVisibleTasks();
   const dayClosed = isActiveDayClosed();
   const dayActiveTasks = getEditableTasksForDay(activeDayKey).filter(
@@ -450,6 +561,7 @@ function render() {
   updateProgress();
   updateComposerLock();
   renderHistory();
+  renderRecurringTasks();
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
 
@@ -565,7 +677,7 @@ function render() {
 }
 
 function switchSection(section) {
-  currentSection = section === "stats" ? "stats" : "tasks";
+  currentSection = ["tasks", "stats", "recurring"].includes(section) ? section : "tasks";
 
   for (const tab of sectionTabs) {
     const isActive = tab.dataset.section === currentSection;
@@ -972,6 +1084,23 @@ function normalizeTaskNote(value) {
   return value.trim().slice(0, 240);
 }
 
+function normalizeTaskTitle(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, 90);
+}
+
+function normalizeRecurringTime(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  return /^\d{2}:\d{2}$/.test(trimmed) ? trimmed : "";
+}
+
 function normalizeDueAt(value) {
   if (typeof value !== "string") {
     return null;
@@ -1132,6 +1261,95 @@ function getVisibleTasks() {
     .map((item) => item.task);
 }
 
+function ensureRecurringTasksForDay(dateKey) {
+  if (isDayClosed(dateKey)) {
+    return false;
+  }
+
+  let didCreate = false;
+
+  for (const recurring of recurringTasks) {
+    if (!recurring.isActive || !recurring.title) {
+      continue;
+    }
+
+    const alreadyExists = tasks.some(
+      (task) => task.dateKey === dateKey && task.recurringId === recurring.id,
+    );
+
+    if (alreadyExists) {
+      continue;
+    }
+
+    tasks.push({
+      id: crypto.randomUUID(),
+      title: recurring.title,
+      view: "now",
+      done: false,
+      completedFrom: null,
+      priority: "medium",
+      dueAt: recurring.time ? `${dateKey}T${recurring.time}` : null,
+      note: "",
+      recurringId: recurring.id,
+      dateKey,
+    });
+    didCreate = true;
+  }
+
+  if (didCreate) {
+    saveTasks();
+  }
+
+  return didCreate;
+}
+
+function renderRecurringTasks() {
+  if (!recurringList) {
+    return;
+  }
+
+  const activeCount = recurringTasks.filter((item) => item.isActive).length;
+  recurringCount.textContent = `${activeCount} активных`;
+  recurringList.innerHTML = "";
+  recurringEmpty.hidden = recurringTasks.length > 0;
+
+  for (const item of recurringTasks) {
+    const row = document.createElement("li");
+    row.className = `recurring-item${item.isActive ? "" : " is-paused"}`;
+
+    const copy = document.createElement("div");
+    copy.className = "recurring-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = item.title;
+    copy.append(title);
+
+    const meta = document.createElement("span");
+    meta.textContent = item.time ? `Каждый день · ${item.time}` : "Каждый день";
+    copy.append(meta);
+
+    const toggle = document.createElement("button");
+    toggle.className = "recurring-toggle";
+    toggle.type = "button";
+    toggle.textContent = item.isActive ? "Включено" : "Выключено";
+    toggle.setAttribute(
+      "aria-label",
+      item.isActive ? "Отключить регулярную задачу" : "Включить регулярную задачу",
+    );
+    toggle.addEventListener("click", () => toggleRecurringTask(item.id));
+
+    const remove = document.createElement("button");
+    remove.className = "recurring-delete";
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", "Удалить регулярную задачу");
+    remove.addEventListener("click", () => deleteRecurringTask(item.id));
+
+    row.append(copy, toggle, remove);
+    recurringList.append(row);
+  }
+}
+
 function addTask(title) {
   if (isActiveDayClosed()) {
     return;
@@ -1146,9 +1364,45 @@ function addTask(title) {
     priority: "medium",
     dueAt: null,
     note: "",
+    recurringId: null,
     dateKey: activeDayKey,
   });
   saveTasks();
+  render();
+}
+
+function addRecurringTask(title, time) {
+  const normalizedTitle = normalizeTaskTitle(title);
+
+  if (!normalizedTitle) {
+    recurringTitle.focus();
+    return;
+  }
+
+  recurringTasks.push({
+    id: crypto.randomUUID(),
+    title: normalizedTitle,
+    time: normalizeRecurringTime(time),
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  });
+  saveRecurringTasks();
+  ensureRecurringTasksForDay(activeDayKey);
+  render();
+}
+
+function toggleRecurringTask(id) {
+  recurringTasks = recurringTasks.map((item) =>
+    item.id === id ? { ...item, isActive: !item.isActive } : item,
+  );
+  saveRecurringTasks();
+  ensureRecurringTasksForDay(activeDayKey);
+  render();
+}
+
+function deleteRecurringTask(id) {
+  recurringTasks = recurringTasks.filter((item) => item.id !== id);
+  saveRecurringTasks();
   render();
 }
 
@@ -1271,6 +1525,7 @@ function closeDay() {
         dateKey: nextDayKey,
         view: "now",
         completedFrom: null,
+        recurringId: null,
       };
     });
 
@@ -1589,6 +1844,15 @@ form.addEventListener("submit", (event) => {
   addTask(title);
   input.value = "";
   input.focus();
+});
+
+recurringForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  addRecurringTask(recurringTitle.value, recurringTime.value);
+  recurringTitle.value = "";
+  recurringTime.value = "";
+  recurringTitle.focus();
 });
 
 composerClose.addEventListener("click", () => {
