@@ -875,18 +875,18 @@ h1 {
 
 .day-tools {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 20px;
 }
 
 .day-review {
   display: grid;
-  justify-items: center;
-  gap: 14px;
-  padding: 18px 16px;
+  justify-items: stretch;
+  gap: 12px;
+  padding: 24px 0 4px;
   border: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.42);
+  border-radius: 0;
+  background: transparent;
 }
 
 .day-review[hidden] {
@@ -894,33 +894,35 @@ h1 {
 }
 
 .day-review-head {
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
 }
 
 .day-review h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
 .day-rating-options {
   display: grid;
-  grid-template-columns: repeat(5, 34px);
-  gap: 4px;
-  justify-content: center;
+  grid-template-columns: repeat(5, 32px);
+  gap: 6px;
+  justify-content: end;
 }
 
 .day-rating-options button {
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   color: #c2c9c4;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 700;
   line-height: 1;
   transition:
@@ -930,20 +932,22 @@ h1 {
 }
 
 .day-rating-options button:hover {
-  color: #8fb39e;
+  color: #70b28d;
+  background: rgba(217, 239, 227, 0.34);
 }
 
 .day-rating-options button.is-active {
-  color: var(--mint-strong);
+  background: rgba(217, 239, 227, 0.78);
+  color: #4f9d73;
   transform: none;
 }
 
 .day-rating-options button.is-filled {
-  color: var(--mint-strong);
+  color: #66ad86;
 }
 
 .day-rating-options button.is-active.is-filled {
-  color: var(--mint-strong);
+  color: #24312a;
 }
 
 .day-review label {
@@ -955,18 +959,18 @@ h1 {
 
 .day-review textarea {
   min-width: 0;
-  width: min(100%, 560px);
-  border: 1px solid rgba(217, 222, 217, 0.82);
+  width: 100%;
+  border: 1px solid rgba(217, 222, 217, 0.72);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.46);
   color: var(--ink);
   outline: none;
 }
 
 .day-review textarea {
-  min-height: 74px;
+  min-height: 64px;
   resize: vertical;
-  padding: 12px;
+  padding: 10px 12px;
   line-height: 1.4;
 }
 
@@ -984,31 +988,31 @@ h1 {
 .day-review-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  width: min(100%, 560px);
+  width: 100%;
 }
 
 .day-review-submit,
 .day-review-cancel {
-  min-height: 42px;
-  padding: 0 18px;
+  min-height: 38px;
+  padding: 0 16px;
   border: 0;
   border-radius: 8px;
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
 .day-review-submit {
-  min-width: 190px;
+  min-width: 170px;
   background: #dcebe2;
   color: #24312a;
   font-weight: 700;
 }
 
 .day-review-cancel {
-  min-width: 120px;
+  min-width: 104px;
   border: 1px solid rgba(217, 222, 217, 0.82);
   background: rgba(255, 255, 255, 0.54);
   color: var(--muted);
