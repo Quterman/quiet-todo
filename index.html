@@ -23,7 +23,7 @@
         document.documentElement.dataset.theme = theme;
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=boot-loader-1" />
+    <link rel="stylesheet" href="./styles.css?v=stats-trend-mode-1" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -229,8 +229,8 @@
                     </div>
                   </div>
                   <div class="period-metrics" id="period-metrics" aria-live="polite"></div>
+                  <div class="week-trend" id="week-trend" aria-live="polite"></div>
                   <ol class="history-list" id="history-list"></ol>
-                  <div class="week-summary" id="week-summary" aria-live="polite"></div>
                 </section>
               </section>
 
@@ -303,6 +303,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./supabase-client.js?v=recurring-2"></script>
-    <script src="./script.js?v=boot-loader-1"></script>
+    <script src="./script.js?v=trend-render-fix-1"></script>
   </body>
 </html>

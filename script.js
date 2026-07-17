@@ -3,6 +3,7 @@ const HISTORY_KEY = "quiet-todo.history";
 const ACTIVE_DAY_KEY = "quiet-todo.active-day";
 const RECURRING_KEY = "quiet-todo.recurring";
 const THEME_KEY = "quiet-todo.theme";
+const CLOUD_LOAD_TIMEOUT_MS = 8000;
 const supabaseClient = window.quietTodoSupabase;
 const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
 const verificationTaskTitles = new Set([
@@ -66,7 +67,7 @@ const dayReviewSubmit = document.querySelector("#day-review-submit");
 const dayReviewCancel = document.querySelector("#day-review-cancel");
 const historyCount = document.querySelector("#history-count");
 const historyList = document.querySelector("#history-list");
-const weekSummary = document.querySelector("#week-summary");
+const weekTrend = document.querySelector("#week-trend");
 const periodMetrics = document.querySelector("#period-metrics");
 const statsMonthPrev = document.querySelector("#stats-month-prev");
 const statsMonthNext = document.querySelector("#stats-month-next");
@@ -99,6 +100,7 @@ let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = false;
 let currentSection = "tasks";
+let statsTrendMode = "week";
 let selectedDayRating = 4;
 let editingDueTaskId = null;
 let editingNoteTaskId = null;
@@ -453,89 +455,116 @@ async function loadCloudData() {
   isLoadingCloudData = true;
   setAuthStatus("Загружаю задачи из Supabase...");
 
-  const taskResult = await supabaseClient
-    .from("tasks")
-    .select("*")
-    .order("sort_order", { ascending: true });
-  const historyResult = await supabaseClient
-    .from("day_history")
-    .select("*")
-    .order("created_at", { ascending: false });
-  const recurringResult = await supabaseClient
-    .from("recurring_tasks")
-    .select("*")
-    .order("created_at", { ascending: true });
+  try {
+    const [taskResult, historyResult, recurringResult] = await Promise.all([
+      withTimeout(
+        supabaseClient.from("tasks").select("*").order("sort_order", { ascending: true }),
+        CLOUD_LOAD_TIMEOUT_MS,
+        "задачи",
+      ),
+      withTimeout(
+        supabaseClient.from("day_history").select("*").order("created_at", { ascending: false }),
+        CLOUD_LOAD_TIMEOUT_MS,
+        "история",
+      ),
+      withTimeout(
+        supabaseClient.from("recurring_tasks").select("*").order("created_at", { ascending: true }),
+        CLOUD_LOAD_TIMEOUT_MS,
+        "регулярные",
+      ),
+    ]);
 
-  if (taskResult.error) {
-    setAuthStatus(`Ошибка загрузки задач: ${taskResult.error.message}`);
-    isLoadingCloudData = false;
-    return;
-  }
+    if (taskResult.error) {
+      setAuthStatus(`Ошибка загрузки задач: ${taskResult.error.message}`);
+      return;
+    }
 
-  if (recurringResult.error) {
-    recurringTasks = [];
-    setAuthStatus(`Задачи загрузились. Регулярные пока недоступны: ${recurringResult.error.message}`);
-  }
+    if (recurringResult.error) {
+      recurringTasks = [];
+      setAuthStatus(`Задачи загрузились. Регулярные пока недоступны: ${recurringResult.error.message}`);
+    }
 
-  tasks = taskResult.data.map((row) =>
-    normalizeTask({
-      id: row.id,
-      title: row.title,
-      view: row.view,
-      done: row.done,
-      completedFrom: row.completed_from,
-      priority: row.priority,
-      dueAt: row.due_at,
-      note: row.note,
-      recurringId: row.recurring_id,
-      dateKey: row.date_key,
-    }),
-  );
-  if (!recurringResult.error) {
-    recurringTasks = recurringResult.data.map((row) =>
-      normalizeRecurringTask({
+    tasks = taskResult.data.map((row) =>
+      normalizeTask({
         id: row.id,
         title: row.title,
-        time: row.time,
-        isActive: row.is_active,
-        createdAt: row.created_at,
+        view: row.view,
+        done: row.done,
+        completedFrom: row.completed_from,
+        priority: row.priority,
+        dueAt: row.due_at,
+        note: row.note,
+        recurringId: row.recurring_id,
+        dateKey: row.date_key,
       }),
     );
-  }
-  cloudHistorySyncEnabled = !historyResult.error;
-  history = historyResult.error
-    ? history
-    : historyResult.data.map((row) =>
-        normalizeHistoryItem({
+    if (!recurringResult.error) {
+      recurringTasks = recurringResult.data.map((row) =>
+        normalizeRecurringTask({
           id: row.id,
-          date: row.created_at,
-          dateKey: row.date_key,
-          total: row.total,
-          completed: row.completed,
-          moved: row.moved,
-          percent: row.percent,
-          rating: row.rating,
-          note: row.note,
-          archivedTasks: row.archived_tasks,
+          title: row.title,
+          time: row.time,
+          isActive: row.is_active,
+          createdAt: row.created_at,
         }),
       );
+    }
+    cloudHistorySyncEnabled = !historyResult.error;
+    history = historyResult.error
+      ? history
+      : historyResult.data.map((row) =>
+          normalizeHistoryItem({
+            id: row.id,
+            date: row.created_at,
+            dateKey: row.date_key,
+            total: row.total,
+            completed: row.completed,
+            moved: row.moved,
+            percent: row.percent,
+            rating: row.rating,
+            note: row.note,
+            archivedTasks: row.archived_tasks,
+          }),
+        );
 
-  activeDayKey = chooseActiveDayKey(activeDayKey);
-  syncStatsMonthToActiveDay();
-  saveActiveDayKey();
-  isLoadingCloudData = false;
-  const didCreateRecurringTasks = ensureRecurringTasksForDay(activeDayKey);
-  if (didCreateRecurringTasks) {
-    scheduleCloudSave();
+    activeDayKey = chooseActiveDayKey(activeDayKey);
+    syncStatsMonthToActiveDay();
+    saveActiveDayKey();
+    isLoadingCloudData = false;
+    const didCreateRecurringTasks = ensureRecurringTasksForDay(activeDayKey);
+    if (didCreateRecurringTasks) {
+      scheduleCloudSave();
+    }
+    setAuthStatus(
+      historyResult.error
+        ? `Задачи загружены. История пока недоступна: ${historyResult.error.message}`
+        : recurringResult.error
+        ? `Задачи загружены. Регулярные пока недоступны: ${recurringResult.error.message}`
+        : "Данные загружены из Supabase",
+    );
+    render();
+  } catch (error) {
+    setAuthStatus(`Не удалось загрузить Supabase, работаем с локальными данными: ${getErrorMessage(error)}`);
+  } finally {
+    isLoadingCloudData = false;
   }
-  setAuthStatus(
-    historyResult.error
-      ? `Задачи загружены. История пока недоступна: ${historyResult.error.message}`
-      : recurringResult.error
-      ? `Задачи загружены. Регулярные пока недоступны: ${recurringResult.error.message}`
-      : "Данные загружены из Supabase",
-  );
-  render();
+}
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : "неизвестная ошибка";
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`таймаут загрузки: ${label}`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
 }
 
 function setAuthStatus(text) {
@@ -561,6 +590,14 @@ function finishBootLoading() {
   }
 }
 
+function renderSafely() {
+  try {
+    render();
+  } catch (error) {
+    setAuthStatus(`Ошибка отображения: ${getErrorMessage(error)}`);
+  }
+}
+
 async function signOut() {
   if (!supabaseClient) {
     return;
@@ -577,12 +614,24 @@ async function initializeAuth() {
     currentUser = null;
     updateAuthUi();
     setAuthStatus("Supabase не загрузился, работаем локально");
-    render();
+    renderSafely();
     finishBootLoading();
     return;
   }
 
-  const { data } = await supabaseClient.auth.getSession();
+  let data;
+
+  try {
+    ({ data } = await withTimeout(supabaseClient.auth.getSession(), CLOUD_LOAD_TIMEOUT_MS, "сессия"));
+  } catch (error) {
+    currentUser = null;
+    updateAuthUi();
+    setAuthStatus(`Не удалось проверить сессию Supabase: ${getErrorMessage(error)}`);
+    renderSafely();
+    finishBootLoading();
+    return;
+  }
+
   currentUser = data.session?.user ?? null;
   updateAuthUi();
 
@@ -591,9 +640,14 @@ async function initializeAuth() {
     return;
   }
 
-  await loadCloudData();
-  render();
-  finishBootLoading();
+  try {
+    await loadCloudData();
+  } catch (error) {
+    setAuthStatus(`Не удалось загрузить Supabase, работаем с локальными данными: ${getErrorMessage(error)}`);
+  } finally {
+    renderSafely();
+    finishBootLoading();
+  }
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     const previousUserId = currentUser?.id;
@@ -625,8 +679,6 @@ function render() {
   renderDaySwitcher();
   updateProgress();
   updateComposerLock();
-  renderHistory();
-  renderRecurringTasks();
   list.innerHTML = "";
   emptyState.hidden = visibleTasks.length > 0;
 
@@ -736,6 +788,22 @@ function render() {
 
     wireDragEvents(item, task);
     list.append(item);
+  }
+
+  renderSecondarySectionsSafely();
+}
+
+function renderSecondarySectionsSafely() {
+  try {
+    renderHistory();
+  } catch (error) {
+    setAuthStatus(`Ошибка отображения статистики: ${getErrorMessage(error)}`);
+  }
+
+  try {
+    renderRecurringTasks();
+  } catch (error) {
+    setAuthStatus(`Ошибка отображения регулярных задач: ${getErrorMessage(error)}`);
   }
 }
 
@@ -883,6 +951,7 @@ function renderHistory() {
     monthItems.length,
   )}`;
   renderPeriodMetrics(monthItems);
+  renderWeekTrend(activeDate, historyByDate);
   historyList.innerHTML = "";
 
   for (const dayName of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
@@ -914,7 +983,9 @@ function renderHistory() {
     historyItem.setAttribute(
       "aria-label",
       item
-        ? `${dayLabel}: закрыто ${item.completed} из ${item.total}, ${item.percent}%`
+        ? `${dayLabel}: закрыто ${item.completed} из ${item.total}, ${item.percent}%${
+            item.rating ? `, оценка ${item.rating} из 5` : ""
+          }`
         : `${dayLabel}: день не закрыт`,
     );
 
@@ -935,12 +1006,16 @@ function renderHistory() {
       result.className = "calendar-result";
       result.textContent = `${item.completed}/${item.total}`;
 
-      const percent = document.createElement("span");
-      percent.className = "calendar-percent";
-      percent.textContent = item.rating ? `${item.percent}% · ${item.rating}/5` : `${item.percent}%`;
-
       progress.append(result);
-      historyItem.append(progress, percent);
+      historyItem.append(progress);
+
+      if (item.rating) {
+        const rating = document.createElement("span");
+        rating.className = "calendar-rating";
+        rating.textContent = `★${item.rating}`;
+        rating.setAttribute("aria-label", `Оценка дня ${item.rating} из 5`);
+        historyItem.append(rating);
+      }
     } else {
       const empty = document.createElement("span");
       empty.className = "calendar-empty";
@@ -964,7 +1039,6 @@ function renderHistory() {
     historyList.append(historyItem);
   }
 
-  renderWeekSummary(activeDate);
 }
 
 function capitalize(text) {
@@ -1007,61 +1081,225 @@ function getPeriodStats(items) {
   };
 }
 
-function renderWeekSummary(date) {
-  const stats = getWeekStats(date);
+function renderWeekTrend(date, historyByDate) {
+  const trend = getTrendData(date, historyByDate);
+  const stats = getTrendStats(trend.items);
+  const todayKey = getTodayKey();
+  const dayFormatter = new Intl.DateTimeFormat("ru-RU", { weekday: "short" });
+  const monthDayFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+  const chartWidth = 100;
+  const chartHeight = 100;
+  const chartTop = 14;
+  const chartBottom = 78;
+  const chartLeft = 5;
+  weekTrend.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "week-trend-head";
+
+  const title = document.createElement("span");
+  title.className = "week-trend-title";
+  title.textContent = trend.title;
+
+  const actions = document.createElement("div");
+  actions.className = "week-trend-actions";
+
+  const note = document.createElement("span");
+  note.className = "week-trend-note";
+  note.textContent =
+    stats.daysClosed === 0
+      ? "нет закрытых дней"
+      : `${stats.daysClosed} ${getClosedDayWord(stats.daysClosed)} · ${stats.completed}/${stats.total} · ${stats.percent}%`;
+
+  const switcher = document.createElement("div");
+  switcher.className = "trend-mode-switch";
+  switcher.setAttribute("aria-label", "Масштаб тренда");
+
+  for (const item of [
+    { mode: "week", label: "Неделя" },
+    { mode: "month", label: "Месяц" },
+  ]) {
+    const button = document.createElement("button");
+    button.className = item.mode === statsTrendMode ? "is-active" : "";
+    button.type = "button";
+    button.dataset.trendMode = item.mode;
+    button.setAttribute("aria-pressed", String(item.mode === statsTrendMode));
+    button.textContent = item.label;
+    switcher.append(button);
+  }
+
+  actions.append(note, switcher);
+  head.append(title, actions);
+  weekTrend.append(head);
+
+  const chart = document.createElement("div");
+  chart.className = "week-trend-chart";
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", trend.title);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  gradient.setAttribute("id", "week-trend-fill");
+  gradient.setAttribute("x1", "0");
+  gradient.setAttribute("x2", "0");
+  gradient.setAttribute("y1", "0");
+  gradient.setAttribute("y2", "1");
+
+  for (const stop of [
+    { offset: "0%", opacity: "0.26" },
+    { offset: "100%", opacity: "0" },
+  ]) {
+    const item = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    item.setAttribute("offset", stop.offset);
+    item.setAttribute("stop-color", "currentColor");
+    item.setAttribute("stop-opacity", stop.opacity);
+    gradient.append(item);
+  }
+
+  defs.append(gradient);
+  svg.append(defs);
+
+  for (const level of [100, 50, 0]) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    const y = chartBottom - (level / 100) * (chartBottom - chartTop);
+    line.setAttribute("class", `week-trend-grid${level === 0 ? " is-baseline" : ""}`);
+    line.setAttribute("x1", chartLeft);
+    line.setAttribute("x2", chartWidth - chartLeft);
+    line.setAttribute("y1", y);
+    line.setAttribute("y2", y);
+    svg.append(line);
+  }
+
+  const points = [];
+
+  for (let index = 0; index < trend.days.length; index += 1) {
+    const day = trend.days[index];
+    const dateKey = getDateKey(day);
+    const item = historyByDate.get(dateKey);
+    const isFuture = compareDateKeys(dateKey, todayKey) > 0;
+    const value = item ? item.percent : 0;
+    const step = trend.days.length <= 1 ? 0 : (chartWidth - chartLeft * 2) / (trend.days.length - 1);
+    const x = chartLeft + index * step;
+    const y = chartBottom - (value / 100) * (chartBottom - chartTop);
+
+    points.push({ x, y, item, isFuture, value, dateKey });
+  }
+
+  const closedPoints = points.filter((point) => point.item);
+
+  if (closedPoints.length > 1) {
+    const linePath = closedPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+    const areaPath = `${linePath} L ${closedPoints[closedPoints.length - 1].x} ${chartBottom} L ${
+      closedPoints[0].x
+    } ${chartBottom} Z`;
+
+    const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    area.setAttribute("class", "week-trend-area");
+    area.setAttribute("d", areaPath);
+    svg.append(area);
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("class", "week-trend-line");
+    line.setAttribute("d", linePath);
+    svg.append(line);
+  }
+
+  chart.append(svg);
+
+  const overlay = document.createElement("ol");
+  overlay.className = "week-trend-points";
+  const lastClosedPoint = closedPoints[closedPoints.length - 1] || null;
+
+  for (const point of points) {
+    const showPoint = statsTrendMode === "week" || point.item || point.dateKey === activeDayKey;
+
+    if (!showPoint) {
+      continue;
+    }
+
+    const marker = document.createElement("li");
+    const pointDate = parseDateKey(point.dateKey);
+    const pointLabel =
+      statsTrendMode === "month"
+        ? monthDayFormatter.format(pointDate).replace(".", "")
+        : capitalize(dayFormatter.format(pointDate)).replace(".", "");
+    marker.className = `week-trend-point${point.item ? " is-closed" : ""}${
+      point.dateKey === activeDayKey ? " is-active" : ""
+    }${point.isFuture ? " is-future" : ""}`;
+    marker.style.left = `${point.x}%`;
+    marker.style.top = `${point.item ? point.y : chartBottom}%`;
+    marker.setAttribute(
+      "aria-label",
+      point.item ? `${pointLabel}: ${point.item.percent}% выполнения` : `${pointLabel}: день не закрыт`,
+    );
+
+    const dot = document.createElement("span");
+    dot.className = "week-trend-point-dot";
+    dot.setAttribute("aria-hidden", "true");
+    marker.append(dot);
+
+    if (point.item && (statsTrendMode === "week" || point.dateKey === activeDayKey || point === lastClosedPoint)) {
+      const value = document.createElement("strong");
+      value.textContent = `${point.value}%`;
+      marker.append(value);
+    }
+
+    overlay.append(marker);
+  }
+
+  chart.append(overlay);
+  weekTrend.append(chart);
+}
+
+function getTrendData(date, historyByDate) {
+  if (statsTrendMode === "month") {
+    const monthStart = getMonthStart(statsMonthDate);
+    const monthLabel = new Intl.DateTimeFormat("ru-RU", {
+      month: "long",
+      year: "numeric",
+    }).format(monthStart);
+    const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+    const days = Array.from(
+      { length: daysInMonth },
+      (_, index) => new Date(monthStart.getFullYear(), monthStart.getMonth(), index + 1),
+    );
+    const monthKey = getMonthKey(monthStart);
+    const items = Array.from(historyByDate.values()).filter((item) => item.dateKey.startsWith(monthKey));
+
+    return {
+      days,
+      items,
+      title: `Тренд месяца · ${capitalize(monthLabel)}`,
+    };
+  }
+
   const weekStart = getWeekStart(date);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  weekSummary.innerHTML = "";
-
-  const title = document.createElement("span");
-  title.className = "week-summary-title";
-  title.textContent = `Итог недели · ${formatWeekRange(weekStart, weekEnd)}`;
-  weekSummary.append(title);
-
-  if (stats.daysClosed === 0) {
-    const empty = document.createElement("p");
-    empty.className = "week-summary-empty";
-    empty.textContent = "Закрой день, и тут появится ритм недели";
-    weekSummary.append(empty);
-    return;
-  }
-
-  const list = document.createElement("dl");
-  list.className = "week-summary-list";
-
-  for (const item of [
-    { label: "Дней", value: stats.daysClosed },
-    { label: "Задач", value: `${stats.completed}/${stats.total}` },
-    { label: "Выполнение", value: `${stats.percent}%` },
-  ]) {
-    const group = document.createElement("div");
-    const term = document.createElement("dt");
-    const value = document.createElement("dd");
-
-    term.textContent = item.label;
-    value.textContent = item.value;
-    group.append(term, value);
-    list.append(group);
-  }
-
-  weekSummary.append(list);
-}
-
-function getWeekStats(date) {
-  const start = getWeekStart(date);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-
-  const weekItems = history.filter((item) => {
-    const itemDate = parseDateKey(item.dateKey);
-    return itemDate >= start && itemDate <= end;
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + index);
+    return day;
   });
-  const completed = weekItems.reduce((sum, item) => sum + item.completed, 0);
-  const total = weekItems.reduce((sum, item) => sum + item.total, 0);
+  const items = days.map((day) => historyByDate.get(getDateKey(day))).filter(Boolean);
 
   return {
-    daysClosed: weekItems.length,
+    days,
+    items,
+    title: `Тренд недели · ${formatWeekRange(weekStart, weekEnd)}`,
+  };
+}
+
+function getTrendStats(items) {
+  const completed = items.reduce((sum, item) => sum + item.completed, 0);
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+
+  return {
+    daysClosed: items.length,
     completed,
     total,
     percent: total === 0 ? 0 : Math.round((completed / total) * 100),
@@ -2060,6 +2298,13 @@ document.addEventListener("pointerup", (event) => {
 
 document.addEventListener("click", (event) => {
   let shouldRender = false;
+  const trendModeButton = event.target.closest("[data-trend-mode]");
+
+  if (trendModeButton) {
+    statsTrendMode = trendModeButton.dataset.trendMode === "month" ? "month" : "week";
+    render();
+    return;
+  }
 
   if (editingDueTaskId && !event.target.closest(".task-due")) {
     editingDueTaskId = null;
@@ -2194,4 +2439,8 @@ themeToggle.addEventListener("change", () => {
 setComposerExpanded(false);
 setDayRating(selectedDayRating);
 switchSection(currentSection);
-initializeAuth();
+initializeAuth().catch((error) => {
+  setAuthStatus(`Не удалось запустить приложение: ${getErrorMessage(error)}`);
+  renderSafely();
+  finishBootLoading();
+});

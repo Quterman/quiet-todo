@@ -1328,10 +1328,10 @@ h1 {
 
 .history {
   min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .recurring {
@@ -1499,7 +1499,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .history-title {
@@ -1566,16 +1566,25 @@ h1 {
 .period-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0 0 12px;
+  gap: 0;
+  margin: 0 0 14px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(217, 222, 217, 0.72);
+  border-bottom: 1px solid rgba(217, 222, 217, 0.72);
 }
 
 .period-metrics div {
   min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.62);
+  padding: 0 12px;
+  border: 0;
+  border-left: 1px solid rgba(217, 222, 217, 0.72);
+  border-radius: 0;
+  background: transparent;
+}
+
+.period-metrics div:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .period-metrics span {
@@ -1594,6 +1603,191 @@ h1 {
   line-height: 1.1;
 }
 
+.week-trend {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 12px 0 14px;
+  border-top: 1px solid rgba(217, 222, 217, 0.72);
+  border-bottom: 1px solid rgba(217, 222, 217, 0.72);
+  border-radius: 0;
+  background: transparent;
+}
+
+.week-trend-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.week-trend-title {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.week-trend-note {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.week-trend-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+}
+
+.trend-mode-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(217, 222, 217, 0.82);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.trend-mode-switch button {
+  min-width: 58px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.trend-mode-switch button:hover {
+  color: var(--ink);
+}
+
+.trend-mode-switch button.is-active {
+  background: rgba(220, 235, 226, 0.82);
+  color: #24312a;
+}
+
+.week-trend-chart {
+  position: relative;
+  min-height: 116px;
+  padding: 2px 0 0;
+  color: var(--mint-strong);
+}
+
+.week-trend-chart svg {
+  width: 100%;
+  height: 108px;
+  display: block;
+  overflow: hidden;
+}
+
+.week-trend-grid {
+  fill: none;
+  stroke: rgba(154, 166, 160, 0.2);
+  stroke-dasharray: 4 8;
+  stroke-linecap: round;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.week-trend-grid.is-baseline {
+  stroke: rgba(154, 166, 160, 0.28);
+  stroke-dasharray: none;
+}
+
+.week-trend-area {
+  fill: url("#week-trend-fill");
+  color: var(--mint-strong);
+}
+
+.week-trend-line {
+  fill: none;
+  stroke: var(--mint-strong);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.week-trend-points {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  left: 0;
+  height: 108px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.week-trend-point {
+  position: absolute;
+  width: 0;
+  height: 0;
+  color: var(--muted);
+  transform: translate(-50%, -50%);
+}
+
+.week-trend-point-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(105, 113, 111, 0.36);
+  border-radius: 50%;
+  background: var(--panel);
+  transform: translate(-50%, -50%);
+}
+
+.week-trend-point.is-closed .week-trend-point-dot {
+  width: 9px;
+  height: 9px;
+  border-color: var(--mint-strong);
+}
+
+.week-trend-point.is-active .week-trend-point-dot {
+  border-color: #6fa287;
+  box-shadow: 0 0 0 3px rgba(118, 183, 149, 0.18);
+}
+
+.week-trend-point.is-closed.is-active .week-trend-point-dot {
+  border-color: var(--panel);
+  background: var(--mint-strong);
+  box-shadow: 0 0 0 3px rgba(118, 183, 149, 0.22);
+}
+
+.week-trend-point.is-future {
+  opacity: 0.5;
+}
+
+.week-trend-point strong {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  padding: 2px 5px;
+  border: 1px solid rgba(185, 201, 191, 0.86);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
 .history-list {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1601,55 +1795,6 @@ h1 {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.week-summary {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.week-summary-title {
-  color: var(--ink);
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
-.week-summary-empty {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.week-summary-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.week-summary-list div {
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.62);
-}
-
-.week-summary-list dt {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.week-summary-list dd {
-  margin: 3px 0 0;
-  color: var(--ink);
-  font-size: 0.95rem;
-  font-weight: 800;
 }
 
 .calendar-weekday {
@@ -1677,23 +1822,31 @@ h1 {
   padding: 22px 7px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(255, 255, 255, 0.46);
   color: var(--muted);
   font-size: 0.76rem;
 }
 
+.calendar-day.is-selectable:hover {
+  border-color: rgba(217, 222, 217, 0.72);
+  background: rgba(255, 255, 255, 0.38);
+}
+
 .calendar-day.is-today {
-  border-color: #a7bfaf;
-  box-shadow: inset 0 0 0 1px #a7bfaf;
+  border-color: rgba(167, 191, 175, 0.72);
+  background: rgba(245, 251, 247, 0.58);
+  box-shadow: none;
 }
 
 .calendar-day.is-active {
   border-color: #6fa287;
-  box-shadow: inset 0 0 0 2px #6fa287;
+  background: rgba(238, 248, 242, 0.72);
+  box-shadow: inset 0 0 0 1px #6fa287;
 }
 
 .calendar-day.is-in-selected-week:not(.is-active) {
-  box-shadow: inset 0 0 0 1px rgba(118, 183, 149, 0.42);
+  background: rgba(245, 251, 247, 0.46);
+  box-shadow: none;
 }
 
 .calendar-day.is-selectable {
@@ -1706,7 +1859,7 @@ h1 {
   --success-soft: #eef8f2;
   --success-pale: #f5fbf7;
   --success-track: #dce8df;
-  border-color: var(--success-line);
+  border-color: rgba(183, 210, 194, 0.54);
   background: linear-gradient(180deg, var(--success-pale), var(--success-soft));
   color: #53615a;
 }
@@ -1766,10 +1919,21 @@ h1 {
   line-height: 1;
 }
 
-.calendar-percent {
-  color: var(--success-color);
-  font-size: 0.72rem;
-  font-weight: 700;
+.calendar-rating {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  min-width: 25px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid rgba(211, 163, 63, 0.38);
+  border-radius: 7px;
+  background: rgba(255, 249, 230, 0.86);
+  color: #9a6b16;
+  font-size: 0.64rem;
+  font-weight: 800;
   line-height: 1;
 }
 
@@ -2273,12 +2437,8 @@ h1 {
 :root[data-theme="dark"] .auth-mode-tabs,
 :root[data-theme="dark"] .login-secondary,
 :root[data-theme="dark"] .day-arrow,
-:root[data-theme="dark"] .history,
 :root[data-theme="dark"] .recurring,
 :root[data-theme="dark"] .month-nav,
-:root[data-theme="dark"] .period-metrics div,
-:root[data-theme="dark"] .week-summary-list div,
-:root[data-theme="dark"] .calendar-day,
 :root[data-theme="dark"] .recurring-item,
 :root[data-theme="dark"] .recurring-item.is-paused .recurring-toggle,
 :root[data-theme="dark"] .composer-close,
@@ -2303,6 +2463,63 @@ h1 {
   border-color: var(--line);
   background: var(--field-bg);
   color: var(--ink);
+}
+
+:root[data-theme="dark"] .week-trend-grid {
+  stroke: rgba(170, 184, 176, 0.18);
+}
+
+:root[data-theme="dark"] .period-metrics,
+:root[data-theme="dark"] .week-trend {
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .period-metrics div {
+  border-left-color: var(--line);
+}
+
+:root[data-theme="dark"] .week-trend-note {
+  border-color: transparent;
+  background: transparent;
+}
+
+:root[data-theme="dark"] .trend-mode-switch {
+  border-color: var(--line);
+  background: rgba(24, 34, 29, 0.34);
+}
+
+:root[data-theme="dark"] .trend-mode-switch button.is-active {
+  background: rgba(140, 207, 168, 0.18);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .week-trend-point-dot {
+  border-color: rgba(170, 184, 176, 0.38);
+  background: var(--soft-panel);
+}
+
+:root[data-theme="dark"] .week-trend-point.is-closed .week-trend-point-dot {
+  border-color: var(--mint-strong);
+}
+
+:root[data-theme="dark"] .week-trend-point.is-active .week-trend-point-dot {
+  border-color: var(--mint-strong);
+}
+
+:root[data-theme="dark"] .week-trend-point.is-closed.is-active .week-trend-point-dot {
+  border-color: var(--soft-panel);
+  background: var(--mint-strong);
+}
+
+:root[data-theme="dark"] .week-trend-point strong {
+  border-color: rgba(90, 106, 98, 0.92);
+  background: rgba(24, 34, 29, 0.88);
+}
+
+:root[data-theme="dark"] .calendar-rating {
+  border-color: rgba(211, 163, 63, 0.34);
+  background: rgba(85, 68, 33, 0.88);
+  color: #f1d08a;
 }
 
 :root[data-theme="dark"] .auth-form input:focus,
@@ -2430,16 +2647,19 @@ h1 {
 
 :root[data-theme="dark"] .calendar-day.is-today {
   border-color: #638a72;
-  box-shadow: inset 0 0 0 1px #638a72;
+  background: rgba(31, 54, 41, 0.48);
+  box-shadow: none;
 }
 
 :root[data-theme="dark"] .calendar-day.is-active {
   border-color: var(--mint-strong);
-  box-shadow: inset 0 0 0 2px var(--mint-strong);
+  background: rgba(31, 54, 41, 0.66);
+  box-shadow: inset 0 0 0 1px var(--mint-strong);
 }
 
 :root[data-theme="dark"] .calendar-day.is-in-selected-week:not(.is-active) {
-  box-shadow: inset 0 0 0 1px rgba(140, 207, 168, 0.34);
+  background: rgba(31, 54, 41, 0.28);
+  box-shadow: none;
 }
 
 :root[data-theme="dark"] .calendar-day.is-closed {
@@ -2713,7 +2933,7 @@ h1 {
   }
 
   .history {
-    padding: 12px;
+    padding: 0;
   }
 
   .history-head {
@@ -2728,31 +2948,92 @@ h1 {
 
   .period-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
+    gap: 0;
   }
 
   .period-metrics div {
-    padding: 7px 6px;
+    padding: 8px 10px;
+  }
+
+  .period-metrics div:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .period-metrics div:nth-child(n + 3) {
+    padding-top: 10px;
+    border-top: 1px solid rgba(217, 222, 217, 0.72);
+  }
+
+  :root[data-theme="dark"] .period-metrics div:nth-child(n + 3) {
+    border-top-color: var(--line);
   }
 
   .period-metrics strong {
     font-size: 0.86rem;
   }
 
+  .week-trend {
+    padding: 8px 8px 10px;
+  }
+
+  .week-trend-head {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .week-trend-actions {
+    width: 100%;
+    align-items: start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .trend-mode-switch button {
+    min-width: 54px;
+    padding: 0 7px;
+  }
+
+  .week-trend-chart svg {
+    height: 96px;
+  }
+
+  .week-trend-line {
+    stroke-width: 2;
+  }
+
+  .week-trend-chart {
+    min-height: 104px;
+  }
+
+  .week-trend-point {
+    width: 0;
+    height: 0;
+  }
+
+  .week-trend-point-dot {
+    width: 7px;
+    height: 7px;
+    border-width: 2px;
+  }
+
+  .week-trend-point.is-closed .week-trend-point-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .week-trend-point strong {
+    padding: 2px 4px;
+    font-size: 0.58rem;
+  }
+
+  .week-trend-points {
+    height: 96px;
+  }
+
   .history-list {
     gap: 4px;
-  }
-
-  .week-summary-list {
-    gap: 4px;
-  }
-
-  .week-summary-list div {
-    padding: 7px 6px;
-  }
-
-  .week-summary-list dd {
-    font-size: 0.82rem;
   }
 
   .calendar-blank,
@@ -2778,8 +3059,13 @@ h1 {
     font-size: 0.78rem;
   }
 
-  .calendar-percent {
-    font-size: 0.6rem;
+  .calendar-rating {
+    right: 4px;
+    bottom: 5px;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 0.56rem;
   }
 
   .history-undo {
