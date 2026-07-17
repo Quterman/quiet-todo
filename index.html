@@ -23,11 +23,11 @@
         document.documentElement.dataset.theme = theme;
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=account-polish-1" />
+    <link rel="stylesheet" href="./styles.css?v=boot-loader-1" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
-      <section class="workspace" data-current-section="tasks">
+      <section class="workspace is-booting" data-current-section="tasks" aria-busy="true">
         <aside class="app-sidebar" aria-label="Навигация">
           <div class="brand-mark">
             <h1 id="app-title">Тихий список</h1>
@@ -72,7 +72,7 @@
           <header class="topbar">
             <section class="day-nav" aria-label="Рабочий день">
               <button class="day-date-button" id="day-date-button" type="button">
-                <span id="active-day-title">Сегодня, 15 июля, ср</span>
+                <span id="active-day-title">Собираю день</span>
               </button>
               <input class="day-picker" id="day-picker" type="date" aria-label="Выбрать день" />
               <div class="day-nav-arrows" aria-label="Переключение дней">
@@ -104,6 +104,24 @@
               </div>
             </section>
           </header>
+
+          <section class="boot-loader" id="boot-loader" aria-label="Загрузка дня" aria-live="polite">
+            <div class="boot-loader-copy">
+              <h2>Собираю день</h2>
+            </div>
+            <div class="boot-loader-wave" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="boot-loader-rows" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </section>
 
           <div class="workspace-body">
             <div class="content-column">
@@ -285,6 +303,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./supabase-client.js?v=recurring-2"></script>
-    <script src="./script.js?v=account-polish-1"></script>
+    <script src="./script.js?v=boot-loader-1"></script>
   </body>
 </html>

@@ -118,11 +118,18 @@ button {
 }
 
 .workspace-main {
+  position: relative;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 24px 24px 24px 28px;
+}
+
+.workspace.is-booting .topbar,
+.workspace.is-booting .workspace-body {
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .topbar {
@@ -147,6 +154,124 @@ button {
 .workspace-body {
   min-width: 0;
   display: block;
+}
+
+.boot-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  min-width: 0;
+  display: none;
+  align-content: center;
+  justify-items: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.workspace.is-booting .boot-loader {
+  display: grid;
+}
+
+.boot-loader-copy {
+  display: grid;
+  justify-items: center;
+}
+
+.boot-loader-copy h2 {
+  margin: 0;
+  color: rgba(32, 33, 36, 0.88);
+  font-size: 1.42rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.boot-loader-wave {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.boot-loader-wave span {
+  width: 5px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(118, 183, 149, 0.48);
+  transform-origin: center;
+  animation: boot-wave 1400ms ease-in-out infinite;
+}
+
+.boot-loader-wave span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.boot-loader-wave span:nth-child(3) {
+  background: rgba(242, 139, 119, 0.46);
+  animation-delay: 240ms;
+}
+
+.boot-loader-wave span:nth-child(4) {
+  animation-delay: 360ms;
+}
+
+.boot-loader-wave span:nth-child(5) {
+  animation-delay: 480ms;
+}
+
+.boot-loader-rows {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 794px);
+  margin-top: 62px;
+  opacity: 0.5;
+}
+
+.boot-loader-rows span {
+  width: min(100%, 794px);
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(217, 222, 217, 0.38);
+  animation: boot-pulse 2000ms ease-in-out infinite;
+}
+
+.boot-loader-rows span:nth-child(2) {
+  width: min(82%, 650px);
+  animation-delay: 150ms;
+}
+
+.boot-loader-rows span:nth-child(3) {
+  width: min(68%, 540px);
+  animation-delay: 300ms;
+}
+
+@keyframes boot-wave {
+  0% {
+    opacity: 0.45;
+    transform: scaleY(0.58);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleY(1.75);
+  }
+
+  100% {
+    opacity: 0.45;
+    transform: scaleY(0.58);
+  }
+}
+
+@keyframes boot-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
 }
 
 .workspace:not([data-current-section="tasks"]) .topbar {
@@ -1724,9 +1849,7 @@ h1 {
 }
 
 .task.is-focus {
-  background:
-    linear-gradient(90deg, rgba(242, 139, 119, 0.14) 0 3px, transparent 3px),
-    transparent;
+  background: transparent;
 }
 
 .task[draggable="true"] {
@@ -1769,12 +1892,25 @@ h1 {
   background: rgba(255, 255, 255, 0.58);
   color: transparent;
   font-size: 0.76rem;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
 }
 
 .task.is-done .task-check {
   border-color: var(--mint-strong);
   background: rgba(217, 239, 227, 0.82);
   color: var(--ink);
+}
+
+.task-title-line {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  line-height: 1.36;
 }
 
 .task-title {
@@ -1788,6 +1924,61 @@ h1 {
   min-width: 0;
   display: grid;
   gap: 5px;
+}
+
+.task-priority {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.task-priority::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(105, 113, 111, 0.28);
+  content: "";
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.task-priority:hover::before,
+.task-priority:focus-visible::before {
+  background: rgba(242, 139, 119, 0.56);
+  transform: scale(1.15);
+}
+
+.task:hover .task-priority,
+.task:focus-within .task-priority {
+  opacity: 1;
+}
+
+.task-priority.is-high {
+  opacity: 1;
+}
+
+.task-priority.is-high::before {
+  background: var(--coral);
+  box-shadow:
+    0 0 0 3px rgba(242, 139, 119, 0.12),
+    0 0 12px rgba(242, 139, 119, 0.46);
+}
+
+.task-priority:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .task-note-preview {
@@ -1905,25 +2096,6 @@ h1 {
   color: var(--ink);
 }
 
-.task-priority {
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  z-index: 2;
-  width: 6px;
-  min-width: 0;
-  height: auto;
-  padding: 0;
-  border: 0;
-  border-radius: 0 999px 999px 0;
-  background: rgba(242, 139, 119, 0.18);
-  opacity: 0;
-  transition:
-    background 160ms ease,
-    opacity 160ms ease;
-}
-
 .task-due {
   position: relative;
   display: grid;
@@ -2022,39 +2194,6 @@ h1 {
   border: 1px solid var(--line) !important;
   background: rgba(255, 255, 255, 0.62);
   color: var(--muted);
-}
-
-.task-priority:hover {
-  background: rgba(242, 139, 119, 0.34);
-  opacity: 1;
-}
-
-.task-priority.is-low {
-  background: rgba(242, 139, 119, 0.18);
-}
-
-.task-priority.is-medium {
-  background: rgba(242, 139, 119, 0.18);
-}
-
-.task-priority.is-high {
-  background: rgba(242, 139, 119, 0.34);
-  opacity: 1;
-}
-
-.task:hover .task-priority,
-.task:focus-within .task-priority {
-  opacity: 0.78;
-}
-
-.task:hover .task-priority.is-high,
-.task:focus-within .task-priority.is-high {
-  opacity: 1;
-}
-
-.task-priority:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
 }
 
 .task.is-done .task-title {
@@ -2212,6 +2351,38 @@ h1 {
   color: var(--mint-strong) !important;
 }
 
+:root[data-theme="dark"] .boot-loader-copy h2 {
+  color: rgba(237, 244, 239, 0.9);
+}
+
+:root[data-theme="dark"] .boot-loader-wave span {
+  background: rgba(140, 207, 168, 0.52);
+}
+
+:root[data-theme="dark"] .boot-loader-wave span:nth-child(3) {
+  background: rgba(239, 154, 134, 0.54);
+}
+
+:root[data-theme="dark"] .boot-loader-rows span {
+  background: rgba(53, 68, 62, 0.46);
+}
+
+:root[data-theme="dark"] .task-priority::before {
+  background: rgba(235, 229, 215, 0.32);
+}
+
+:root[data-theme="dark"] .task-priority:hover::before,
+:root[data-theme="dark"] .task-priority:focus-visible::before {
+  background: rgba(239, 154, 134, 0.66);
+}
+
+:root[data-theme="dark"] .task-priority.is-high::before {
+  background: var(--coral);
+  box-shadow:
+    0 0 0 3px rgba(239, 154, 134, 0.14),
+    0 0 13px rgba(239, 154, 134, 0.5);
+}
+
 :root[data-theme="dark"] .composer input::placeholder,
 :root[data-theme="dark"] .login-form input::placeholder {
   color: var(--muted-weak);
@@ -2361,6 +2532,10 @@ h1 {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .boot-loader {
+    padding: 24px 38px;
+  }
+
 }
 
 @media (max-width: 620px) {
@@ -2377,6 +2552,19 @@ h1 {
 
   .login-actions {
     grid-template-columns: 1fr;
+  }
+
+  .boot-loader {
+    padding: 24px 38px;
+  }
+
+  .boot-loader-copy h2 {
+    font-size: 1.35rem;
+  }
+
+  .boot-loader-rows {
+    gap: 14px;
+    margin-top: 58px;
   }
 
   .app {
@@ -2487,13 +2675,6 @@ h1 {
     grid-column: 2 / -1;
     grid-row: 2;
     justify-items: start;
-  }
-
-  .task-priority {
-    top: 10px;
-    bottom: 10px;
-    left: 0;
-    width: 6px;
   }
 
   .task-delete {

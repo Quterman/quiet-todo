@@ -75,6 +75,7 @@ const authLogout = document.querySelector("#auth-logout");
 const authStatus = document.querySelector("#auth-status");
 const accountEmail = document.querySelector("#account-email");
 const workspace = document.querySelector(".workspace");
+const bootLoader = document.querySelector("#boot-loader");
 const sectionTitle = document.querySelector("#section-title");
 const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
 const sectionPanels = Array.from(document.querySelectorAll("[data-section-panel]"));
@@ -551,6 +552,15 @@ function updateAuthUi() {
   setAuthStatus(currentUser ? "Supabase" : "Открываю страницу входа");
 }
 
+function finishBootLoading() {
+  workspace.classList.remove("is-booting");
+  workspace.setAttribute("aria-busy", "false");
+
+  if (bootLoader) {
+    bootLoader.hidden = true;
+  }
+}
+
 async function signOut() {
   if (!supabaseClient) {
     return;
@@ -568,6 +578,7 @@ async function initializeAuth() {
     updateAuthUi();
     setAuthStatus("Supabase не загрузился, работаем локально");
     render();
+    finishBootLoading();
     return;
   }
 
@@ -581,6 +592,8 @@ async function initializeAuth() {
   }
 
   await loadCloudData();
+  render();
+  finishBootLoading();
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     const previousUserId = currentUser?.id;
@@ -641,14 +654,16 @@ function render() {
     priority.className = `task-priority is-${task.priority}`;
     priority.type = "button";
     priority.disabled = dayClosed;
-    priority.textContent = "";
-    priority.title =
-      task.priority === "high" ? "Снять фокус" : "Поставить фокус";
+    priority.title = task.priority === "high" ? "Снять фокус" : "Поставить фокус";
     priority.setAttribute(
       "aria-label",
       task.priority === "high" ? "Снять фокус с задачи" : "Поставить фокус на задачу",
     );
     priority.addEventListener("click", () => togglePriority(task.id));
+
+    const titleLine = document.createElement("span");
+    titleLine.className = "task-title-line";
+    titleLine.append(title, priority);
 
     const due = document.createElement("div");
     due.className = `task-due${task.dueAt ? " has-due" : ""}`;
@@ -676,7 +691,7 @@ function render() {
 
     const taskCopy = document.createElement("div");
     taskCopy.className = "task-copy";
-    taskCopy.append(title);
+    taskCopy.append(titleLine);
 
     if (task.note) {
       const notePreview = document.createElement("button");
@@ -704,7 +719,7 @@ function render() {
     remove.textContent = "×";
     remove.addEventListener("click", () => deleteTask(task.id));
 
-    item.append(priority, check, taskCopy, due, remove);
+    item.append(check, taskCopy, due, remove);
 
     if (!task.note && !dayClosed && editingNoteTaskId !== task.id) {
       const noteBubble = document.createElement("button");
