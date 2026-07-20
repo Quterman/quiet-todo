@@ -23,7 +23,7 @@
         document.documentElement.dataset.theme = theme;
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=stats-trend-mode-1" />
+    <link rel="stylesheet" href="./styles.css?v=workdays-mode-1" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -247,7 +247,7 @@
                       name="recurring-title"
                       type="text"
                       autocomplete="off"
-                      placeholder="Что должно появляться каждый день?"
+                      placeholder="Что должно появляться регулярно?"
                       maxlength="90"
                     />
                     <label class="visually-hidden" for="recurring-time">Время</label>
@@ -257,7 +257,7 @@
                   <ul class="recurring-list" id="recurring-list"></ul>
                   <div class="recurring-empty" id="recurring-empty" hidden>
                     <h2>Пока без ритуалов</h2>
-                    <p>Добавь задачу, которая должна появляться каждый день.</p>
+                    <p>Добавь задачу, которая должна появляться автоматически.</p>
                   </div>
                 </section>
               </section>
@@ -284,6 +284,16 @@
                         <span aria-hidden="true"></span>
                       </label>
                     </section>
+                    <section class="account-row workdays-setting" aria-label="Рабочие дни">
+                      <div class="account-row-copy">
+                        <strong>Рабочие дни</strong>
+                        <small id="workdays-status">Пн–Пт</small>
+                      </div>
+                      <div class="workdays-toggle" aria-label="Режим рабочих дней">
+                        <button class="is-active" data-workdays-mode="weekdays" type="button">Пн–Пт</button>
+                        <button data-workdays-mode="everyday" type="button">Каждый день</button>
+                      </div>
+                    </section>
                     <section class="account-row account-exit" aria-label="Выход из аккаунта">
                       <div class="account-row-copy account-exit-copy">
                         <strong>Выход из аккаунта</strong>
@@ -303,6 +313,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="./supabase-client.js?v=recurring-2"></script>
-    <script src="./script.js?v=trend-render-fix-1"></script>
+    <script src="./script.js?v=workdays-mode-1"></script>
   </body>
 </html>

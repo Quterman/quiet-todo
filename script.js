@@ -3,6 +3,8 @@ const HISTORY_KEY = "quiet-todo.history";
 const ACTIVE_DAY_KEY = "quiet-todo.active-day";
 const RECURRING_KEY = "quiet-todo.recurring";
 const THEME_KEY = "quiet-todo.theme";
+const SECTION_KEY = "quiet-todo.section";
+const WORKDAYS_MODE_KEY = "quiet-todo.workdays-mode";
 const CLOUD_LOAD_TIMEOUT_MS = 8000;
 const supabaseClient = window.quietTodoSupabase;
 const loginUrl = window.quietTodoConfig?.loginUrl ?? "./login.html";
@@ -88,8 +90,11 @@ const recurringCount = document.querySelector("#recurring-count");
 const recurringEmpty = document.querySelector("#recurring-empty");
 const themeToggle = document.querySelector("#theme-toggle");
 const themeStatus = document.querySelector("#theme-status");
+const workdaysStatus = document.querySelector("#workdays-status");
+const workdaysModeButtons = Array.from(document.querySelectorAll("[data-workdays-mode]"));
 
 let currentTheme = loadTheme();
+let workdaysMode = loadWorkdaysMode();
 let activeDayKey = loadActiveDayKey();
 let tasks = loadTasks();
 let history = loadHistory();
@@ -99,7 +104,7 @@ let statsMonthDate = getMonthStart(parseDateKey(activeDayKey));
 let draggedTaskId = null;
 let pointerDrag = null;
 let composerExpanded = false;
-let currentSection = "tasks";
+let currentSection = loadSection();
 let statsTrendMode = "week";
 let selectedDayRating = 4;
 let editingDueTaskId = null;
@@ -110,6 +115,7 @@ let isLoadingCloudData = false;
 let cloudHistorySyncEnabled = true;
 
 applyTheme(currentTheme);
+applyWorkdaysMode(workdaysMode);
 
 function loadTheme() {
   const saved = localStorage.getItem(THEME_KEY);
@@ -137,6 +143,31 @@ function applyTheme(theme) {
 function setTheme(theme) {
   applyTheme(theme);
   localStorage.setItem(THEME_KEY, currentTheme);
+}
+
+function loadWorkdaysMode() {
+  const saved = localStorage.getItem(WORKDAYS_MODE_KEY);
+  return saved === "everyday" ? "everyday" : "weekdays";
+}
+
+function applyWorkdaysMode(mode) {
+  workdaysMode = mode === "everyday" ? "everyday" : "weekdays";
+
+  if (workdaysStatus) {
+    workdaysStatus.textContent = workdaysMode === "everyday" ? "Каждый день" : "Пн–Пт";
+  }
+
+  for (const button of workdaysModeButtons) {
+    const isActive = button.dataset.workdaysMode === workdaysMode;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  }
+}
+
+function setWorkdaysMode(mode) {
+  applyWorkdaysMode(mode);
+  localStorage.setItem(WORKDAYS_MODE_KEY, workdaysMode);
+  render();
 }
 
 function loadTasks() {
@@ -191,6 +222,19 @@ function loadRecurringTasks() {
 function loadActiveDayKey() {
   const saved = localStorage.getItem(ACTIVE_DAY_KEY);
   return normalizeDateKey(saved) || getTodayKey();
+}
+
+function loadSection() {
+  const saved = localStorage.getItem(SECTION_KEY);
+  return normalizeSection(saved);
+}
+
+function saveSection() {
+  localStorage.setItem(SECTION_KEY, currentSection);
+}
+
+function normalizeSection(section) {
+  return ["tasks", "stats", "recurring", "account"].includes(section) ? section : "tasks";
 }
 
 function normalizeTask(task) {
@@ -808,7 +852,8 @@ function renderSecondarySectionsSafely() {
 }
 
 function switchSection(section) {
-  currentSection = ["tasks", "stats", "recurring", "account"].includes(section) ? section : "tasks";
+  currentSection = normalizeSection(section);
+  saveSection();
   workspace.dataset.currentSection = currentSection;
   const sectionTitles = {
     tasks: "Фокус на день",
@@ -1378,6 +1423,25 @@ function addDays(dateKey, amount) {
   return getDateKey(date);
 }
 
+function getNextWorkdayKey(dateKey) {
+  let nextDateKey = addDays(dateKey, 1);
+
+  while (!isWorkday(nextDateKey)) {
+    nextDateKey = addDays(nextDateKey, 1);
+  }
+
+  return nextDateKey;
+}
+
+function isWorkday(dateKey) {
+  if (workdaysMode === "everyday") {
+    return true;
+  }
+
+  const day = parseDateKey(dateKey).getDay();
+  return day >= 1 && day <= 5;
+}
+
 function formatDayLabel(dateKey) {
   const date = parseDateKey(dateKey);
 
@@ -1743,6 +1807,10 @@ function ensureRecurringTasksForDay(dateKey) {
     return false;
   }
 
+  if (!isWorkday(dateKey)) {
+    return false;
+  }
+
   let didCreate = false;
 
   for (const recurring of recurringTasks) {
@@ -1802,7 +1870,8 @@ function renderRecurringTasks() {
     copy.append(title);
 
     const meta = document.createElement("span");
-    meta.textContent = item.time ? `Каждый день · ${item.time}` : "Каждый день";
+    const recurringScope = workdaysMode === "everyday" ? "Каждый день" : "Рабочие дни";
+    meta.textContent = item.time ? `${recurringScope} · ${item.time}` : recurringScope;
     copy.append(meta);
 
     const toggle = document.createElement("button");
@@ -1983,7 +2052,7 @@ function closeDay() {
   }));
   const rating = selectedDayRating || null;
   const note = dayNote.value.trim();
-  const nextDayKey = addDays(activeDayKey, 1);
+  const nextDayKey = getNextWorkdayKey(activeDayKey);
 
   history = history.filter((item) => item.dateKey !== activeDayKey);
   history.unshift({
@@ -2435,6 +2504,12 @@ authLogout.addEventListener("click", () => {
 themeToggle.addEventListener("change", () => {
   setTheme(themeToggle.checked ? "dark" : "light");
 });
+
+for (const button of workdaysModeButtons) {
+  button.addEventListener("click", () => {
+    setWorkdaysMode(button.dataset.workdaysMode);
+  });
+}
 
 setComposerExpanded(false);
 setDayRating(selectedDayRating);
